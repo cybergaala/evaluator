@@ -23,5 +23,5 @@ Future<void> initDependencies() async {
   Get.put(GetHistory(Get.find()));
   Get.put(SaveAttempt(Get.find()));
 
-  Get.put(ThemeController());
+  Get.put(ThemeController(prefs));
 }

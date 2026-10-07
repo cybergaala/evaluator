@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 // Adapted from flutter_easy_refresh v4 example: page/more/theme_page.dart
 class ThemeModel {
@@ -52,19 +53,40 @@ class ThemeModel {
   ];
 }
 
-// ponytail: theme isn't persisted across restarts; store it in shared_preferences if wanted.
+/// Persists the chosen mode and seed color in [SharedPreferences].
 class ThemeController extends GetxController {
   static ThemeController get i => Get.find();
 
+  static const _modeKey = 'theme_mode';
+  static const _colorKey = 'theme_color';
+
+  final SharedPreferences _prefs;
   final mode = ThemeMode.system.obs;
   final seedColor = Rx<Color>(Colors.green);
+
+  ThemeController(this._prefs) {
+    final modeIndex = _prefs.getInt(_modeKey);
+    if (modeIndex != null && modeIndex < ThemeMode.values.length) {
+      mode.value = ThemeMode.values[modeIndex];
+    }
+    // Look the color up in [ThemeModel.themes]: a plain Color(argb) never
+    // equals a MaterialColor, which would break [isSelected].
+    final argb = _prefs.getInt(_colorKey);
+    final saved = ThemeModel.themes
+        .map((t) => t.color)
+        .where((c) => c != null && c.toARGB32() == argb)
+        .firstOrNull;
+    if (saved != null) seedColor.value = saved;
+  }
 
   /// Mode entries switch [mode]; color entries switch [seedColor].
   void apply(ThemeModel model) {
     if (model.mode != null) {
       mode.value = model.mode!;
+      _prefs.setInt(_modeKey, model.mode!.index);
     } else if (model.color != null) {
       seedColor.value = model.color!;
+      _prefs.setInt(_colorKey, model.color!.toARGB32());
     }
   }
 

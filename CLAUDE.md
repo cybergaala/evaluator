@@ -34,7 +34,7 @@ Clean Architecture in three layers. Dependencies only point inward: `presentatio
 - `lib/injection.dart`: `initDependencies()` registers repositories and use cases with GetX (`Get.put`). It is the only file that knows the concrete repository classes. Pages get use cases with `Get.find<...>()`.
 - `lib/main.dart`: calls `initDependencies()`, then `GetMaterialApp`, and the theme from `ThemeController`.
 - `lib/presentation/`:
-  - `controllers/theme_controller.dart`: `ThemeModel` + `ThemeController` (GetX).
+  - `controllers/theme_controller.dart`: `ThemeModel` + `ThemeController` (GetX), mode and seed color persisted in `shared_preferences` (`theme_mode`, `theme_color`).
   - `widgets/question_card.dart`: `QuestionCard` + `OptionState`, shared by study and exam modes.
   - `pages/home.dart`: bottom-nav PageView (Evaluaciones / Tema).
   - `pages/evaluations_page.dart`: pull-to-refresh list (kept alive in the PageView; ClassicHeader with explicit colors, clamping on start). Tapping an item opens a sheet with Estudiar / Evaluación / Historial.
