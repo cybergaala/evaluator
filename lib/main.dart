@@ -1,4 +1,3 @@
-import 'package:easy_refresh/easy_refresh.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -9,16 +8,6 @@ import 'presentation/pages/home.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initDependencies();
-  EasyRefresh.defaultHeaderBuilder = () => const ClassicHeader(
-    dragText: 'Desliza para actualizar',
-    armedText: 'Suelta para actualizar',
-    readyText: 'Actualizando...',
-    processingText: 'Actualizando...',
-    processedText: 'Listo',
-    noMoreText: 'No hay más',
-    failedText: 'Error',
-    messageText: 'Actualizado a las %T',
-  );
   runApp(const App());
 }
 

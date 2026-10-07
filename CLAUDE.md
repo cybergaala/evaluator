@@ -32,12 +32,12 @@ Clean Architecture in three layers. Dependencies only point inward: `presentatio
   - `repositories/asset_evaluation_repository.dart`: finds evaluations through `AssetManifest`, so **dropping a new JSON in `assets/evaluations/` is enough**: no index file and no code change.
   - `repositories/prefs_history_repository.dart`: score history in `shared_preferences` under the key `history_<evaluationId>`.
 - `lib/injection.dart`: `initDependencies()` registers repositories and use cases with GetX (`Get.put`). It is the only file that knows the concrete repository classes. Pages get use cases with `Get.find<...>()`.
-- `lib/main.dart`: calls `initDependencies()`, then `GetMaterialApp`, the theme from `ThemeController`, and the default EasyRefresh header texts.
+- `lib/main.dart`: calls `initDependencies()`, then `GetMaterialApp`, and the theme from `ThemeController`.
 - `lib/presentation/`:
   - `controllers/theme_controller.dart`: `ThemeModel` + `ThemeController` (GetX).
   - `widgets/question_card.dart`: `QuestionCard` + `OptionState`, shared by study and exam modes.
   - `pages/home.dart`: bottom-nav PageView (Evaluaciones / Tema).
-  - `pages/evaluations_page.dart`: pull-to-refresh list. Tapping an item opens a sheet with Estudiar / Evaluación / Historial.
+  - `pages/evaluations_page.dart`: pull-to-refresh list (kept alive in the PageView; ClassicHeader with explicit colors, clamping on start). Tapping an item opens a sheet with Estudiar / Evaluación / Historial.
   - `pages/study_page.dart`: **study mode**. A PageView with correct answers highlighted. The AppBar button toggles vertical (TikTok-style) / horizontal scrolling.
   - `pages/exam_page.dart`: **evaluation mode**. Answers are revealed once the user has selected `answers.length` options, then a "Siguiente" button. A final score screen saves an `Attempt` through `SaveAttempt`.
   - `pages/theme_page.dart`: theme picker.

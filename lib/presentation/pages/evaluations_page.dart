@@ -17,11 +17,18 @@ class EvaluationsPage extends StatefulWidget {
   State<EvaluationsPage> createState() => _EvaluationsPageState();
 }
 
-class _EvaluationsPageState extends State<EvaluationsPage> {
+class _EvaluationsPageState extends State<EvaluationsPage>
+    with AutomaticKeepAliveClientMixin {
+  // Keeps the list alive in the home PageView so switching tabs doesn't
+  // rebuild the page and refresh again.
+  @override
+  bool get wantKeepAlive => true;
+
   final _getEvaluations = Get.find<GetEvaluations>();
   final _getHistory = Get.find<GetHistory>();
   List<Evaluation> _evaluations = [];
   Map<String, List<Attempt>> _history = {};
+  bool _loaded = false;
 
   Future<void> _load() async {
     final evaluations = await _getEvaluations();
@@ -32,6 +39,7 @@ class _EvaluationsPageState extends State<EvaluationsPage> {
     setState(() {
       _evaluations = evaluations;
       _history = history;
+      _loaded = true;
     });
   }
 
@@ -91,16 +99,42 @@ class _EvaluationsPageState extends State<EvaluationsPage> {
     );
   }
 
+  // Explicit colors: ClassicHeader's Theme.of() defaults render dark on dark
+  // themes here.
+  ClassicHeader _header({bool clamping = false}) {
+    final color = Theme.of(context).colorScheme.onSurface;
+    return ClassicHeader(
+      clamping: clamping,
+      position: IndicatorPosition.above,
+      dragText: 'Desliza para actualizar',
+      armedText: 'Suelta para actualizar',
+      readyText: 'Actualizando...',
+      processingText: 'Actualizando...',
+      processedText: 'Listo',
+      noMoreText: 'No hay más',
+      failedText: 'Error',
+      messageText: 'Actualizado a las %T',
+      textStyle: TextStyle(color: color),
+      messageStyle: TextStyle(color: color),
+      iconTheme: IconThemeData(color: color),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     return Scaffold(
       body: EasyRefresh(
+        header: _header(),
         refreshOnStart: true,
+        // Clamping: the start refresh overlays the list instead of pushing it
+        // down (same as the example's refresh_on_start_page.dart).
+        refreshOnStartHeader: _header(clamping: true),
         onRefresh: _load,
         child: CustomScrollView(
           slivers: [
             const SliverAppBar.large(title: Text('Evaluaciones')),
-            if (_evaluations.isEmpty)
+            if (_loaded && _evaluations.isEmpty)
               const SliverFillRemaining(
                 hasScrollBody: false,
                 child: Center(
