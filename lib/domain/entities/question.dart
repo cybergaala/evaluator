@@ -1,3 +1,5 @@
+import 'dart:math';
+
 class Question {
   final int id;
   final String question;
@@ -18,4 +20,16 @@ class Question {
   /// Right only if exactly the correct options were picked.
   bool isCorrect(Set<int> selected) =>
       selected.length == answers.length && selected.every(answers.contains);
+
+  /// Same question with its options in random order; [answers] follow them.
+  Question withShuffledOptions(Random random) {
+    final order = List.generate(options.length, (i) => i)..shuffle(random);
+    return Question(
+      id: id,
+      question: question,
+      options: [for (final i in order) options[i]],
+      answers: [for (final a in answers) order.indexOf(a)],
+      explanation: explanation,
+    );
+  }
 }
