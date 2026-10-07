@@ -11,6 +11,7 @@ class QuestionCard extends StatelessWidget {
   final ValueChanged<int>? onTap;
   final bool showExplanation;
   final Widget? footer;
+  final double textScale;
 
   const QuestionCard({
     super.key,
@@ -19,44 +20,52 @@ class QuestionCard extends StatelessWidget {
     this.onTap,
     this.showExplanation = false,
     this.footer,
+    this.textScale = 1,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+    // Multiplies the system text scale, so accessibility settings still count.
+    final scaler = TextScaler.linear(
+      MediaQuery.textScalerOf(context).scale(textScale),
+    );
     return Card(
       margin: const EdgeInsets.all(16),
-      child: ListView(
-        // Not primary: only grabs drags when the content overflows, so the
-        // study PageView can swipe between cards.
-        primary: false,
-        padding: const EdgeInsets.all(20),
-        children: [
-          Text(question.question, style: theme.textTheme.titleLarge),
-          if (question.isMultiAnswer)
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Text(
-                'Selecciona ${question.answers.length} respuestas',
-                style: theme.textTheme.labelMedium,
-              ),
-            ),
-          const SizedBox(height: 20),
-          for (var i = 0; i < question.options.length; i++)
-            _option(context, i, scheme),
-          if (showExplanation && question.explanation != null)
-            Padding(
-              padding: const EdgeInsets.only(top: 12),
-              child: Text(
-                question.explanation!,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  fontStyle: FontStyle.italic,
+      child: MediaQuery(
+        data: MediaQuery.of(context).copyWith(textScaler: scaler),
+        child: ListView(
+          // Not primary: only grabs drags when the content overflows, so the
+          // study PageView can swipe between cards.
+          primary: false,
+          padding: const EdgeInsets.all(20),
+          children: [
+            Text(question.question, style: theme.textTheme.titleLarge),
+            if (question.isMultiAnswer)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(
+                  'Selecciona ${question.answers.length} respuestas',
+                  style: theme.textTheme.labelMedium,
                 ),
               ),
-            ),
-          ?footer,
-        ],
+            const SizedBox(height: 20),
+            for (var i = 0; i < question.options.length; i++)
+              _option(context, i, scheme),
+            if (showExplanation && question.explanation != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 12),
+                child: Text(
+                  question.explanation!,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ),
+            ?footer,
+          ],
+        ),
       ),
     );
   }
