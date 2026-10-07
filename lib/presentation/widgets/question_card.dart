@@ -28,6 +28,9 @@ class QuestionCard extends StatelessWidget {
     return Card(
       margin: const EdgeInsets.all(16),
       child: ListView(
+        // Not primary: only grabs drags when the content overflows, so the
+        // study PageView can swipe between cards.
+        primary: false,
         padding: const EdgeInsets.all(20),
         children: [
           Text(question.question, style: theme.textTheme.titleLarge),
