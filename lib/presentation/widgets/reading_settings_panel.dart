@@ -9,20 +9,32 @@ class ReadingSettingsPanel extends StatelessWidget {
   /// Hidden in study mode, where answers are always shown.
   final bool showRevealAtEnd;
 
-  const ReadingSettingsPanel({super.key, this.showRevealAtEnd = true});
+  /// Hidden in evaluation mode, which has no question slider.
+  final bool showSliderToggle;
 
-  static void showSheet(BuildContext context, {bool showRevealAtEnd = true}) {
-    Get.bottomSheet(
-      Material(
-        color: Theme.of(context).colorScheme.surfaceContainerLow,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-        child: SafeArea(
-          child: SingleChildScrollView(
-            child: ReadingSettingsPanel(showRevealAtEnd: showRevealAtEnd),
+  const ReadingSettingsPanel({
+    super.key,
+    this.showRevealAtEnd = true,
+    this.showSliderToggle = true,
+  });
+
+  static void showSheet(
+    BuildContext context, {
+    bool showRevealAtEnd = true,
+    bool showSliderToggle = true,
+  }) {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (context) => SafeArea(
+        child: SingleChildScrollView(
+          child: ReadingSettingsPanel(
+            showRevealAtEnd: showRevealAtEnd,
+            showSliderToggle: showSliderToggle,
           ),
         ),
       ),
-      isScrollControlled: true,
     );
   }
 
@@ -68,6 +80,16 @@ class ReadingSettingsPanel extends StatelessWidget {
             value: s.shuffleOptions.value,
             onChanged: (v) => s.shuffleOptions.value = v,
           ),
+          if (showSliderToggle)
+            SwitchListTile(
+              secondary: const Icon(Icons.linear_scale),
+              title: const Text('Barra de preguntas'),
+              subtitle: const Text(
+                'En modo estudio, para saltar entre preguntas',
+              ),
+              value: s.showSlider.value,
+              onChanged: (v) => s.showSlider.value = v,
+            ),
           if (showRevealAtEnd)
             SwitchListTile(
               secondary: const Icon(Icons.visibility_off),

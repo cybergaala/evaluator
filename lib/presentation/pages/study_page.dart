@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 
 import '../../domain/entities/evaluation.dart';
 import '../../domain/entities/question.dart';
+import '../controllers/bookmarks_controller.dart';
 import '../controllers/reading_settings_controller.dart';
 import '../widgets/confirm_exit.dart';
 import '../widgets/question_card.dart';
@@ -25,12 +26,77 @@ class _StudyPageState extends State<StudyPage> {
   late final List<Question> _questions = _settings.prepare(
     widget.evaluation.questions,
   );
+  final _bookmarks = BookmarksController.i;
+  late Set<int> _bookmarked = _bookmarks.of(widget.evaluation.id);
   int _page = 0;
 
   @override
   void dispose() {
     _pageController.dispose();
     super.dispose();
+  }
+
+  void _toggleBookmark(int questionId) => setState(
+    () => _bookmarked = _bookmarks.toggle(widget.evaluation.id, questionId),
+  );
+
+  void _goTo(int index) {
+    setState(() => _page = index);
+    _pageController.jumpToPage(index);
+  }
+
+  void _showBookmarks() {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (context) => SafeArea(
+        child: StatefulBuilder(
+          builder: (context, setSheetState) {
+            // In session order, so it matches the slider and the counter.
+            final saved = [
+              for (var i = 0; i < _questions.length; i++)
+                if (_bookmarked.contains(_questions[i].id)) i,
+            ];
+            return ListView(
+              shrinkWrap: true,
+              children: [
+                ListTile(
+                  title: Text(
+                    'Guardadas',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ),
+                if (saved.isEmpty)
+                  const ListTile(title: Text('Sin preguntas guardadas')),
+                for (final i in saved)
+                  ListTile(
+                    leading: Text('${i + 1}'),
+                    title: Text(
+                      _questions[i].question,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    selected: i == _page,
+                    trailing: IconButton(
+                      tooltip: 'Quitar',
+                      icon: const Icon(Icons.bookmark_remove),
+                      onPressed: () {
+                        _toggleBookmark(_questions[i].id);
+                        setSheetState(() {});
+                      },
+                    ),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _goTo(i);
+                    },
+                  ),
+              ],
+            );
+          },
+        ),
+      ),
+    );
   }
 
   @override
@@ -56,7 +122,7 @@ class _StudyPageState extends State<StudyPage> {
           child: Obx(() {
             // Read here: itemBuilder runs lazily, outside Obx's tracking.
             final textScale = _settings.textScale.value;
-            return PageView.builder(
+            final pager = PageView.builder(
               controller: _pageController,
               scrollDirection: _settings.axis,
               itemCount: _questions.length,
@@ -70,10 +136,47 @@ class _StudyPageState extends State<StudyPage> {
                       : OptionState.neutral,
                   showExplanation: true,
                   textScale: textScale,
+                  action: _bookmarked.contains(q.id)
+                      ? IconButton(
+                          tooltip: 'Quitar de guardadas',
+                          onPressed: () => _toggleBookmark(q.id),
+                          icon: const Icon(Icons.bookmark_added),
+                        )
+                      : IconButton(
+                          tooltip: 'Guardar',
+                          onPressed: () => _toggleBookmark(q.id),
+                          icon: const Icon(Icons.bookmark_add_outlined),
+                        ),
                 );
               },
             );
+            return Column(
+              children: [
+                // Quick jump between questions.
+                if (_settings.showSlider.value && _questions.length > 1)
+                  Slider(
+                    value: _page.toDouble(),
+                    max: _questions.length - 1.0,
+                    divisions: _questions.length - 1,
+                    label: '${_page + 1}',
+                    onChanged: (v) => _goTo(v.round()),
+                  ),
+                Expanded(child: pager),
+              ],
+            );
           }),
+        ),
+        // Floats over the pager instead of taking space from it.
+        floatingActionButton: FloatingActionButton(
+          onPressed: _showBookmarks,
+          tooltip: 'Marcadores',
+          elevation: 0,
+          highlightElevation: 0,
+          child: Badge.count(
+            count: _bookmarked.length,
+            isLabelVisible: _bookmarked.isNotEmpty,
+            child: const Icon(Icons.bookmarks),
+          ),
         ),
       ),
     );

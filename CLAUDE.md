@@ -34,13 +34,14 @@ Clean Architecture in three layers. Dependencies only point inward: `presentatio
 - `lib/injection.dart`: `initDependencies()` registers repositories and use cases with GetX (`Get.put`). It is the only file that knows the concrete repository classes. Pages get use cases with `Get.find<...>()`.
 - `lib/main.dart`: calls `initDependencies()`, then `GetMaterialApp`, and the theme from `ThemeController`.
 - `lib/presentation/`:
-  - `controllers/reading_settings_controller.dart`: `ReadingSettingsController` (GetX): text size, vertical/horizontal paging, shuffle questions/options, reveal at end. Persisted in `shared_preferences` (`reading_*` keys). `prepare()` shuffles a question list for a new session.
+  - `controllers/reading_settings_controller.dart`: `ReadingSettingsController` (GetX): text size, vertical/horizontal paging, shuffle questions/options, reveal at end, show the study slider. Persisted in `shared_preferences` (`reading_*` keys). `prepare()` shuffles a question list for a new session.
+  - `controllers/bookmarks_controller.dart`: `BookmarksController` (GetX): bookmarked question ids per evaluation in `shared_preferences` (`bookmarks_<evaluationId>`).
   - `controllers/theme_controller.dart`: `ThemeModel` + `ThemeController` (GetX), mode and seed color persisted in `shared_preferences` (`theme_mode`, `theme_color`).
   - `widgets/question_card.dart`: `QuestionCard` + `OptionState`, shared by study and exam modes. `textScale` multiplies the system text scale.
   - `widgets/reading_settings_panel.dart`: reading settings controls, used by Ajustes → Evaluación and as a bottom sheet (`showSheet`) from the study/exam AppBar.
   - `pages/home.dart`: bottom-nav PageView (Evaluaciones / Ajustes).
   - `pages/evaluations_page.dart`: pull-to-refresh list (kept alive in the PageView; ClassicHeader with explicit colors, clamping on start). Tapping an item opens a sheet with Estudiar / Evaluación / Historial.
-  - `pages/study_page.dart`: **study mode**. A PageView with correct answers highlighted. The AppBar button opens the reading settings sheet (direction comes from the settings).
+  - `pages/study_page.dart`: **study mode**. A PageView with correct answers highlighted. AppBar actions: bookmarks sheet (save/remove the current question, jump to a saved one) and the reading settings sheet (direction comes from the settings). A slider above the pager (right under the AppBar, hideable from the settings) jumps between questions.
   - `pages/exam_page.dart`: **evaluation mode**. Answers are revealed once the user has selected `answers.length` options, then a "Siguiente" button. With "revelar al final" nothing is revealed (single answers can be swapped) and the score is counted on "Siguiente". A final score screen saves an `Attempt` through `SaveAttempt`.
   - `pages/theme_page.dart`: theme picker, opened from Ajustes → Tema.
   - `pages/settings_page.dart`: Ajustes tab, a list with Tema and Evaluación (reading settings).
