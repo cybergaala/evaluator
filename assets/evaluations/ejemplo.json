@@ -1,0 +1,33 @@
+{
+  "id": "ejemplo",
+  "title": "Ejemplo – Ciencias generales",
+  "description": "Banco de ejemplo para probar la app.",
+  "questions": [
+    {
+      "id": 1,
+      "question": "¿Cuál es la unidad básica de la vida?",
+      "options": ["Átomo", "Célula", "Tejido", "Órgano"],
+      "answers": [1],
+      "explanation": "La célula es la unidad estructural y funcional de los seres vivos."
+    },
+    {
+      "id": 2,
+      "question": "¿Qué planeta es conocido como el planeta rojo?",
+      "options": ["Venus", "Júpiter", "Marte", "Saturno"],
+      "answers": [2]
+    },
+    {
+      "id": 3,
+      "question": "Selecciona los gases nobles.",
+      "options": ["Helio", "Oxígeno", "Neón", "Nitrógeno"],
+      "answers": [0, 2],
+      "explanation": "Helio y neón pertenecen al grupo 18 de la tabla periódica."
+    },
+    {
+      "id": 4,
+      "question": "El agua hierve a 100 °C a nivel del mar.",
+      "options": ["Verdadero", "Falso"],
+      "answers": [0]
+    }
+  ]
+}
