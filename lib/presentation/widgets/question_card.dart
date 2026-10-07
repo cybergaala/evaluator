@@ -11,6 +11,9 @@ class QuestionCard extends StatelessWidget {
   final ValueChanged<int>? onTap;
   final bool showExplanation;
   final Widget? footer;
+
+  /// Shown at the top right, next to the question text.
+  final Widget? action;
   final double textScale;
 
   const QuestionCard({
@@ -20,6 +23,7 @@ class QuestionCard extends StatelessWidget {
     this.onTap,
     this.showExplanation = false,
     this.footer,
+    this.action,
     this.textScale = 1,
   });
 
@@ -41,7 +45,18 @@ class QuestionCard extends StatelessWidget {
           primary: false,
           padding: const EdgeInsets.all(20),
           children: [
-            Text(question.question, style: theme.textTheme.titleLarge),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Text(
+                    question.question,
+                    style: theme.textTheme.titleLarge,
+                  ),
+                ),
+                ?action,
+              ],
+            ),
             if (question.isMultiAnswer)
               Padding(
                 padding: const EdgeInsets.only(top: 8),

@@ -116,7 +116,10 @@ class _ExamPageState extends State<ExamPage> {
             actions: [
               IconButton(
                 tooltip: 'Ajustes de lectura',
-                onPressed: () => ReadingSettingsPanel.showSheet(context),
+                onPressed: () => ReadingSettingsPanel.showSheet(
+                  context,
+                  showSliderToggle: false,
+                ),
                 icon: const Icon(Icons.tune),
               ),
             ],

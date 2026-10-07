@@ -44,58 +44,56 @@ class _EvaluationsPageState extends State<EvaluationsPage>
   }
 
   Future<void> _open(Widget page) async {
-    Get.back(); // close the mode sheet
+    Navigator.pop(context); // close the mode sheet
     await Get.to(() => page);
     await _load(); // pick up new scores
   }
 
   void _showModes(Evaluation evaluation) {
     final history = _history[evaluation.id] ?? [];
-    Get.bottomSheet(
-      Material(
-        color: Theme.of(context).colorScheme.surfaceContainerLow,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-        child: SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                title: Text(
-                  evaluation.title,
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              title: Text(
+                evaluation.title,
+                style: Theme.of(context).textTheme.titleMedium,
               ),
-              ListTile(
-                leading: const Icon(Icons.menu_book),
-                title: const Text('Estudiar'),
-                subtitle: const Text('Respuestas resaltadas'),
-                onTap: () => _open(StudyPage(evaluation: evaluation)),
-              ),
-              ListTile(
-                leading: const Icon(Icons.assignment),
-                title: const Text('Evaluación'),
-                subtitle: const Text('Responde y revisa cada pregunta'),
-                onTap: () => _open(ExamPage(evaluation: evaluation)),
-              ),
-              ExpansionTile(
-                leading: const Icon(Icons.history),
-                title: Text('Historial (${history.length})'),
-                children: [
-                  if (history.isEmpty)
-                    const ListTile(title: Text('Sin intentos todavía')),
-                  for (final a in history)
-                    ListTile(
-                      dense: true,
-                      title: Text('${a.correct}/${a.total} · ${a.percent}%'),
-                      subtitle: Text(_formatDate(a.date)),
-                    ),
-                ],
-              ),
-            ],
-          ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.menu_book),
+              title: const Text('Estudiar'),
+              subtitle: const Text('Respuestas resaltadas'),
+              onTap: () => _open(StudyPage(evaluation: evaluation)),
+            ),
+            ListTile(
+              leading: const Icon(Icons.assignment),
+              title: const Text('Evaluación'),
+              subtitle: const Text('Responde y revisa cada pregunta'),
+              onTap: () => _open(ExamPage(evaluation: evaluation)),
+            ),
+            ExpansionTile(
+              leading: const Icon(Icons.history),
+              title: Text('Historial (${history.length})'),
+              children: [
+                if (history.isEmpty)
+                  const ListTile(title: Text('Sin intentos todavía')),
+                for (final a in history)
+                  ListTile(
+                    dense: true,
+                    title: Text('${a.correct}/${a.total} · ${a.percent}%'),
+                    subtitle: Text(_formatDate(a.date)),
+                  ),
+              ],
+            ),
+          ],
         ),
       ),
-      isScrollControlled: true,
     );
   }
 
