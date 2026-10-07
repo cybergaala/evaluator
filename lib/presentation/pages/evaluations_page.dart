@@ -2,7 +2,10 @@ import 'package:easy_refresh/easy_refresh.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
-import '../models.dart';
+import '../../domain/entities/attempt.dart';
+import '../../domain/entities/evaluation.dart';
+import '../../domain/usecases/get_evaluations.dart';
+import '../../domain/usecases/get_history.dart';
 import 'exam_page.dart';
 import 'study_page.dart';
 
@@ -15,13 +18,15 @@ class EvaluationsPage extends StatefulWidget {
 }
 
 class _EvaluationsPageState extends State<EvaluationsPage> {
+  final _getEvaluations = Get.find<GetEvaluations>();
+  final _getHistory = Get.find<GetHistory>();
   List<Evaluation> _evaluations = [];
   Map<String, List<Attempt>> _history = {};
 
   Future<void> _load() async {
-    final evaluations = await loadEvaluations();
+    final evaluations = await _getEvaluations();
     final history = {
-      for (final e in evaluations) e.id: await loadHistory(e.id),
+      for (final e in evaluations) e.id: await _getHistory(e.id),
     };
     if (!mounted) return;
     setState(() {

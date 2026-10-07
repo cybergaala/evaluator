@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 
-import '../models.dart';
-import 'study_page.dart';
+import '../../domain/entities/attempt.dart';
+import '../../domain/entities/evaluation.dart';
+import '../../domain/entities/question.dart';
+import '../../domain/usecases/save_attempt.dart';
+import '../widgets/question_card.dart';
 
 class ExamPage extends StatefulWidget {
   final Evaluation evaluation;
@@ -13,6 +17,7 @@ class ExamPage extends StatefulWidget {
 }
 
 class _ExamPageState extends State<ExamPage> {
+  final _saveAttempt = Get.find<SaveAttempt>();
   final _pageController = PageController();
   int _index = 0;
   final Set<int> _selected = {};
@@ -34,13 +39,13 @@ class _ExamPageState extends State<ExamPage> {
     setState(() {
       // Tapping a selected option again unselects it (matters for multi-answer).
       if (!_selected.remove(option)) _selected.add(option);
-      if (_revealed && _selected.every(_current.answers.contains)) _correct++;
+      if (_revealed && _current.isCorrect(_selected)) _correct++;
     });
   }
 
   Future<void> _next() async {
     if (_index == _questions.length - 1) {
-      await saveAttempt(
+      await _saveAttempt(
         widget.evaluation.id,
         Attempt(DateTime.now(), _correct, _questions.length),
       );

@@ -2,10 +2,13 @@ import 'package:easy_refresh/easy_refresh.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
-import 'pages/home.dart';
-import 'pages/theme_page.dart';
+import 'injection.dart';
+import 'presentation/controllers/theme_controller.dart';
+import 'presentation/pages/home.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await initDependencies();
   EasyRefresh.defaultHeaderBuilder = () => const ClassicHeader(
     dragText: 'Desliza para actualizar',
     armedText: 'Suelta para actualizar',
@@ -16,7 +19,6 @@ void main() {
     failedText: 'Error',
     messageText: 'Actualizado a las %T',
   );
-  Get.put(ThemeController());
   runApp(const App());
 }
 

@@ -1,8 +1,9 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:evaluator/models.dart';
-import 'package:flutter_test/flutter_test.dart' hide Evaluation;
+import 'package:evaluator/data/models/evaluation_model.dart';
+import 'package:evaluator/data/repositories/asset_evaluation_repository.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 /// Validates every bank in assets/evaluations/ against the schema in CLAUDE.md.
 void main() {
@@ -15,7 +16,7 @@ void main() {
 
   for (final file in files) {
     test(file.path, () {
-      final e = Evaluation.fromJson(jsonDecode(file.readAsStringSync()));
+      final e = EvaluationModel.fromJson(jsonDecode(file.readAsStringSync()));
       final fileId = file.uri.pathSegments.last.replaceAll('.json', '');
 
       expect(e.id, fileId, reason: 'id must equal the file name');
