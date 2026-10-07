@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'evaluations_page.dart';
-import 'theme_page.dart';
+import 'settings_page.dart';
 
 // Adapted from flutter_easy_refresh v4 example: page/home.dart
 class HomePage extends StatefulWidget {
@@ -26,7 +26,7 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       body: PageView(
         controller: _pageController,
-        children: const [EvaluationsPage(), ThemePage()],
+        children: const [EvaluationsPage(), SettingsPage()],
         onPageChanged: (index) => setState(() => _pageIndex = index),
       ),
       bottomNavigationBar: BottomNavigationBar(
@@ -39,10 +39,10 @@ class _HomePageState extends State<HomePage> {
         ),
         items: const [
           BottomNavigationBarItem(
-            icon: Icon(Icons.quiz),
+            icon: Icon(Icons.assignment),
             label: 'Evaluaciones',
           ),
-          BottomNavigationBarItem(icon: Icon(Icons.palette), label: 'Tema'),
+          BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Ajustes'),
         ],
       ),
     );
