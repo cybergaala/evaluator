@@ -24,4 +24,13 @@ class BookmarksController extends GetxController {
     ]);
     return ids;
   }
+
+  /// Removes them from every evaluation.
+  Future<void> clearAll() async {
+    for (final key in _prefs.getKeys().where(
+      (k) => k.startsWith('bookmarks_'),
+    )) {
+      await _prefs.remove(key);
+    }
+  }
 }

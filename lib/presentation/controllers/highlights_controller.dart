@@ -64,4 +64,13 @@ class HighlightsController extends GetxController {
     ],
     if (color != null && start < end) (start, end, color),
   ]..sort((a, b) => a.$1.compareTo(b.$1));
+
+  /// Removes them from every evaluation.
+  Future<void> clearAll() async {
+    for (final key in _prefs.getKeys().where(
+      (k) => k.startsWith('highlights_'),
+    )) {
+      await _prefs.remove(key);
+    }
+  }
 }
