@@ -18,6 +18,14 @@ flutter test test/question_test.dart          # domain scoring rule
 flutter test test/history_repository_test.dart # SQLite paging + prefs migration (sqflite_common_ffi)
 ```
 
+Android release (signed) to Firebase App Distribution (project `gaala-evaluator`):
+
+```bash
+scripts/distribute.sh "release notes" [testers-group]  # flutter build apk --release + upload
+```
+
+Signing reads `android/key.properties` (`keyAlias=evaluator`, `storeFile=evaluator-keystore.jks` in `android/app/`); both are git-ignored, so without them the release build falls back to debug keys. Bump `version:` in `pubspec.yaml` before each upload.
+
 Requires Flutter ≥ 3.47 (easy_refresh 4.x needs it).
 
 ## Architecture
