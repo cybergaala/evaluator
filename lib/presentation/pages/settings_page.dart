@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../../domain/usecases/clear_history.dart';
 import '../controllers/bookmarks_controller.dart';
 import '../controllers/highlights_controller.dart';
 import '../widgets/reading_settings_panel.dart';
@@ -37,7 +38,9 @@ class SettingsPage extends StatelessWidget {
               ListTile(
                 leading: const Icon(Icons.storage),
                 title: const Text('Memoria'),
-                subtitle: const Text('Resaltados y preguntas guardadas'),
+                subtitle: const Text(
+                  'Resaltados, preguntas guardadas e historial',
+                ),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => Get.to(() => const _MemorySettingsPage()),
               ),
@@ -124,6 +127,13 @@ class _MemorySettingsPage extends StatelessWidget {
               'las preguntas guardadas',
               BookmarksController.i.clearAll,
             ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.history_toggle_off),
+            title: const Text('Borrar historial'),
+            subtitle: const Text('Quita sesiones de estudio y resultados'),
+            onTap: () =>
+                _clear(context, 'el historial', Get.find<ClearHistory>().call),
           ),
         ],
       ),

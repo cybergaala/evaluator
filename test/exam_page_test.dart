@@ -1,8 +1,6 @@
-import 'package:evaluator/domain/entities/attempt.dart';
 import 'package:evaluator/domain/entities/evaluation.dart';
 import 'package:evaluator/domain/entities/question.dart';
-import 'package:evaluator/domain/repositories/history_repository.dart';
-import 'package:evaluator/domain/usecases/save_attempt.dart';
+import 'package:evaluator/domain/usecases/save_history_entry.dart';
 import 'package:evaluator/presentation/controllers/reading_settings_controller.dart';
 import 'package:evaluator/presentation/pages/exam_page.dart';
 import 'package:flutter/material.dart';
@@ -10,13 +8,7 @@ import 'package:flutter_test/flutter_test.dart' hide Evaluation;
 import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-class _NoHistory implements HistoryRepository {
-  @override
-  Future<List<Attempt>> getAll(String evaluationId) async => [];
-
-  @override
-  Future<void> save(String evaluationId, Attempt attempt) async {}
-}
+import 'fake_history.dart';
 
 void main() {
   testWidgets('revelar al final hides answers until the result', (
@@ -24,7 +16,7 @@ void main() {
   ) async {
     SharedPreferences.setMockInitialValues({'reading_reveal_at_end': true});
     Get.put(ReadingSettingsController(await SharedPreferences.getInstance()));
-    Get.put(SaveAttempt(_NoHistory()));
+    Get.put(SaveHistoryEntry(FakeHistory()));
     addTearDown(Get.reset);
     final evaluation = Evaluation(
       id: 'e',
@@ -53,7 +45,7 @@ void main() {
   testWidgets('leaving asks for confirmation', (tester) async {
     SharedPreferences.setMockInitialValues({});
     Get.put(ReadingSettingsController(await SharedPreferences.getInstance()));
-    Get.put(SaveAttempt(_NoHistory()));
+    Get.put(SaveHistoryEntry(FakeHistory()));
     addTearDown(Get.reset);
     final evaluation = Evaluation(
       id: 'e',

@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
-import '../../domain/entities/attempt.dart';
 import '../../domain/entities/evaluation.dart';
+import '../../domain/entities/history_entry.dart';
 import '../../domain/entities/question.dart';
-import '../../domain/usecases/save_attempt.dart';
+import '../../domain/usecases/save_history_entry.dart';
 import '../controllers/reading_settings_controller.dart';
 import '../widgets/confirm_exit.dart';
 import '../widgets/question_card.dart';
@@ -20,7 +20,7 @@ class ExamPage extends StatefulWidget {
 }
 
 class _ExamPageState extends State<ExamPage> {
-  final _saveAttempt = Get.find<SaveAttempt>();
+  final _save = Get.find<SaveHistoryEntry>();
   final _settings = ReadingSettingsController.i;
   final _pageController = PageController();
   late List<Question> _questions = _settings.prepare(
@@ -34,6 +34,14 @@ class _ExamPageState extends State<ExamPage> {
   Question get _current => _questions[_index];
   bool get _answered => _selected.length == _current.answers.length;
   bool get _revealed => _answered && !_settings.revealAtEnd.value;
+
+  Attempt _attempt() => Attempt(
+    widget.evaluation.id,
+    widget.evaluation.title,
+    DateTime.now(),
+    _correct,
+    _questions.length,
+  );
 
   @override
   void dispose() {
@@ -59,10 +67,7 @@ class _ExamPageState extends State<ExamPage> {
   Future<void> _next() async {
     if (_current.isCorrect(_selected)) _correct++;
     if (_index == _questions.length - 1) {
-      await _saveAttempt(
-        widget.evaluation.id,
-        Attempt(DateTime.now(), _correct, _questions.length),
-      );
+      await _save(_attempt());
       setState(() => _finished = true);
       return;
     }
@@ -167,7 +172,7 @@ class _ExamPageState extends State<ExamPage> {
   }
 
   Widget _result(BuildContext context) {
-    final attempt = Attempt(DateTime.now(), _correct, _questions.length);
+    final attempt = _attempt();
     final textTheme = Theme.of(context).textTheme;
     return Center(
       child: Column(

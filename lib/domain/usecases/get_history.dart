@@ -1,4 +1,4 @@
-import '../entities/attempt.dart';
+import '../entities/history_entry.dart';
 import '../repositories/history_repository.dart';
 
 class GetHistory {
@@ -6,6 +6,6 @@ class GetHistory {
 
   const GetHistory(this._repository);
 
-  Future<List<Attempt>> call(String evaluationId) =>
-      _repository.getAll(evaluationId);
+  Future<List<HistoryEntry>> call({required int offset, required int limit}) =>
+      _repository.page(offset: offset, limit: limit);
 }
