@@ -46,7 +46,7 @@ Clean Architecture in three layers. Dependencies only point inward: `presentatio
   - `pages/study_page.dart`: **study mode**. A PageView with correct answers highlighted. The AppBar saves/removes the current question. A persistent bottom sheet (`DraggableScrollableSheet`, always peeking with a handle and tabs) holds Guardadas (jump to/remove a saved question) and Ajustes (reading settings; direction comes from them). In vertical mode a long card hands its overscroll to the pager. A slider above the pager (right under the AppBar, hideable from the settings) jumps between questions. An AppBar marker button toggles marker mode (text selectable → highlight with neon colors).
   - `pages/exam_page.dart`: **evaluation mode**. Answers are revealed once the user has selected `answers.length` options, then a "Siguiente" button. With "revelar al final" nothing is revealed (single answers can be swapped) and the score is counted on "Siguiente". A final score screen saves an `Attempt` through `SaveAttempt`.
   - `pages/theme_page.dart`: theme picker, opened from Ajustes → Tema.
-  - `pages/settings_page.dart`: Ajustes tab (large title), a list with Tema and Evaluación (reading settings).
+  - `pages/settings_page.dart`: Ajustes tab (large title), a list with Tema, Evaluación (reading settings) and Memoria (clear all highlights / all bookmarks, with a confirm dialog).
 
 UI patterns are copied from the [flutter_easy_refresh v4 example](https://github.com/xuelongqy/flutter_easy_refresh/tree/v4/example/lib) (`page/home.dart`, `page/sample/sample_page.dart`, `page/sample/page_view_page.dart`, `page/more/theme_page.dart`). Follow that example when adding UI.
 
