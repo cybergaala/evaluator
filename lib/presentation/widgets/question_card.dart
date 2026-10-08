@@ -13,6 +13,11 @@ class QuestionCard extends StatelessWidget {
   final Widget? footer;
   final double textScale;
 
+  /// Builds each text (`field`: `q` question, `o<i>` option, `e`
+  /// explanation). Defaults to plain [Text]; study mode passes a highlighter.
+  final Widget Function(String field, String text, TextStyle? style)?
+  textBuilder;
+
   const QuestionCard({
     super.key,
     required this.question,
@@ -21,7 +26,11 @@ class QuestionCard extends StatelessWidget {
     this.showExplanation = false,
     this.footer,
     this.textScale = 1,
+    this.textBuilder,
   });
+
+  Widget _text(String field, String text, [TextStyle? style]) =>
+      textBuilder?.call(field, text, style) ?? Text(text, style: style);
 
   @override
   Widget build(BuildContext context) {
@@ -44,7 +53,7 @@ class QuestionCard extends StatelessWidget {
           physics: const ClampingScrollPhysics(),
           padding: const EdgeInsets.all(20),
           children: [
-            Text(question.question, style: theme.textTheme.titleLarge),
+            _text('q', question.question, theme.textTheme.titleLarge),
             if (question.isMultiAnswer)
               Padding(
                 padding: const EdgeInsets.only(top: 8),
@@ -59,9 +68,10 @@ class QuestionCard extends StatelessWidget {
             if (showExplanation && question.explanation != null)
               Padding(
                 padding: const EdgeInsets.only(top: 12),
-                child: Text(
+                child: _text(
+                  'e',
                   question.explanation!,
-                  style: theme.textTheme.bodyMedium?.copyWith(
+                  theme.textTheme.bodyMedium?.copyWith(
                     fontStyle: FontStyle.italic,
                   ),
                 ),
@@ -99,7 +109,7 @@ class QuestionCard extends StatelessWidget {
           radius: 14,
           child: Text(String.fromCharCode(65 + i)), // A, B, C...
         ),
-        title: Text(question.options[i]),
+        title: _text('o$i', question.options[i]),
         trailing: icon == null ? null : Icon(icon),
         onTap: onTap == null ? null : () => onTap!(i),
       ),

@@ -4,8 +4,10 @@ import 'package:get/get.dart';
 import '../../domain/entities/evaluation.dart';
 import '../../domain/entities/question.dart';
 import '../controllers/bookmarks_controller.dart';
+import '../controllers/highlights_controller.dart';
 import '../controllers/reading_settings_controller.dart';
 import '../widgets/confirm_exit.dart';
+import '../widgets/highlightable_text.dart';
 import '../widgets/question_card.dart';
 import '../widgets/reading_settings_panel.dart';
 
@@ -30,6 +32,9 @@ class _StudyPageState extends State<StudyPage>
   );
   final _bookmarks = BookmarksController.i;
   late Set<int> _bookmarked = _bookmarks.of(widget.evaluation.id);
+  final _highlights = HighlightsController.i;
+  // Marker mode: text becomes selectable, so swiping on it no longer pages.
+  bool _marker = false;
   int _page = 0;
   // Content is only built while the sheet is open, so the peek shows just
   // the handle and tabs.
@@ -211,6 +216,13 @@ class _StudyPageState extends State<StudyPage>
         appBar: AppBar(
           title: Text('${_page + 1}/${_questions.length}'),
           actions: [
+            IconButton(
+              tooltip: _marker ? 'Dejar de resaltar' : 'Resaltar texto',
+              isSelected: _marker,
+              onPressed: () => setState(() => _marker = !_marker),
+              icon: const Icon(Icons.border_color_outlined),
+              selectedIcon: const Icon(Icons.border_color),
+            ),
             if (_bookmarked.contains(current.id))
               IconButton(
                 tooltip: 'Quitar de guardadas',
@@ -262,6 +274,22 @@ class _StudyPageState extends State<StudyPage>
               q.answers.contains(i) ? OptionState.correct : OptionState.neutral,
           showExplanation: true,
           textScale: textScale,
+          textBuilder: (field, text, style) => HighlightableText(
+            text: text,
+            style: style,
+            selectable: _marker,
+            highlights: _highlights.of(widget.evaluation.id, q.id, field),
+            onPaint: (start, end, color) => setState(
+              () => _highlights.paint(
+                widget.evaluation.id,
+                q.id,
+                field,
+                start,
+                end,
+                color,
+              ),
+            ),
+          ),
         );
         // Horizontal paging doesn't fight the card's vertical scroll.
         if (!vertical) return card;
