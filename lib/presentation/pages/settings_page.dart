@@ -10,22 +10,29 @@ class SettingsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Ajustes')),
-      body: ListView(
-        children: [
-          ListTile(
-            leading: const Icon(Icons.palette),
-            title: const Text('Tema'),
-            subtitle: const Text('Modo claro/oscuro y color'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => Get.to(() => const ThemePage()),
-          ),
-          ListTile(
-            leading: const Icon(Icons.assignment),
-            title: const Text('Evaluación'),
-            subtitle: const Text('Texto, desplazamiento, mezcla y revelado'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => Get.to(() => const _EvaluationSettingsPage()),
+      // Large title like the Evaluaciones tab.
+      body: CustomScrollView(
+        slivers: [
+          const SliverAppBar.large(title: Text('Ajustes')),
+          SliverList.list(
+            children: [
+              ListTile(
+                leading: const Icon(Icons.palette),
+                title: const Text('Tema'),
+                subtitle: const Text('Modo claro/oscuro y color'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Get.to(() => const ThemePage()),
+              ),
+              ListTile(
+                leading: const Icon(Icons.assignment),
+                title: const Text('Evaluación'),
+                subtitle: const Text(
+                  'Texto, desplazamiento, mezcla y revelado',
+                ),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Get.to(() => const _EvaluationSettingsPage()),
+              ),
+            ],
           ),
         ],
       ),
