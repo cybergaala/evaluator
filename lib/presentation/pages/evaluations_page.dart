@@ -2,10 +2,11 @@ import 'package:easy_refresh/easy_refresh.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
-import '../../domain/entities/attempt.dart';
+import '../../domain/entities/history_entry.dart';
 import '../../domain/entities/evaluation.dart';
 import '../../domain/usecases/get_evaluations.dart';
-import '../../domain/usecases/get_history.dart';
+import '../../domain/usecases/get_attempts.dart';
+import '../widgets/refresh_indicators.dart';
 import 'exam_page.dart';
 import 'study_page.dart';
 
@@ -25,7 +26,7 @@ class _EvaluationsPageState extends State<EvaluationsPage>
   bool get wantKeepAlive => true;
 
   final _getEvaluations = Get.find<GetEvaluations>();
-  final _getHistory = Get.find<GetHistory>();
+  final _getAttempts = Get.find<GetAttempts>();
   List<Evaluation> _evaluations = [];
   Map<String, List<Attempt>> _history = {};
   bool _loaded = false;
@@ -33,7 +34,8 @@ class _EvaluationsPageState extends State<EvaluationsPage>
   Future<void> _load() async {
     final evaluations = await _getEvaluations();
     final history = {
-      for (final e in evaluations) e.id: await _getHistory(e.id),
+      // ponytail: last 20 per evaluation, the Historial tab has the rest.
+      for (final e in evaluations) e.id: await _getAttempts(e.id, limit: 20),
     };
     if (!mounted) return;
     setState(() {
@@ -79,7 +81,7 @@ class _EvaluationsPageState extends State<EvaluationsPage>
             ),
             ExpansionTile(
               leading: const Icon(Icons.history),
-              title: Text('Historial (${history.length})'),
+              title: const Text('Historial'),
               children: [
                 if (history.isEmpty)
                   const ListTile(title: Text('Sin intentos todavía')),
@@ -87,7 +89,7 @@ class _EvaluationsPageState extends State<EvaluationsPage>
                   ListTile(
                     dense: true,
                     title: Text('${a.correct}/${a.total} · ${a.percent}%'),
-                    subtitle: Text(_formatDate(a.date)),
+                    subtitle: Text(formatDate(a.date)),
                   ),
               ],
             ),
@@ -97,41 +99,20 @@ class _EvaluationsPageState extends State<EvaluationsPage>
     );
   }
 
-  // Explicit colors: ClassicHeader's Theme.of() defaults render dark on dark
-  // themes here.
-  ClassicHeader _header({bool clamping = false}) {
-    final color = Theme.of(context).colorScheme.onSurface;
-    return ClassicHeader(
-      clamping: clamping,
-      position: IndicatorPosition.above,
-      dragText: 'Desliza para actualizar',
-      armedText: 'Suelta para actualizar',
-      readyText: 'Actualizando...',
-      processingText: 'Actualizando...',
-      processedText: 'Listo',
-      noMoreText: 'No hay más',
-      failedText: 'Error',
-      messageText: 'Actualizado a las %T',
-      textStyle: TextStyle(color: color),
-      messageStyle: TextStyle(color: color),
-      iconTheme: IconThemeData(color: color),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     super.build(context);
     return Scaffold(
       body: EasyRefresh(
-        header: _header(),
+        header: classicHeader(context),
         refreshOnStart: true,
         // Clamping: the start refresh overlays the list instead of pushing it
         // down (same as the example's refresh_on_start_page.dart).
-        refreshOnStartHeader: _header(clamping: true),
+        refreshOnStartHeader: classicHeader(context, clamping: true),
         onRefresh: _load,
         child: CustomScrollView(
           slivers: [
-            const SliverAppBar.large(title: Text('Evaluaciones')),
+            const SliverAppBar.large(title: Text('Inicio')),
             if (_loaded && _evaluations.isEmpty)
               const SliverFillRemaining(
                 hasScrollBody: false,
@@ -164,9 +145,4 @@ class _EvaluationsPageState extends State<EvaluationsPage>
       ),
     );
   }
-}
-
-String _formatDate(DateTime d) {
-  String two(int n) => n.toString().padLeft(2, '0');
-  return '${two(d.day)}/${two(d.month)}/${d.year} ${two(d.hour)}:${two(d.minute)}';
 }

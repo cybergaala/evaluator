@@ -25,13 +25,19 @@ class ReadingSettingsController extends GetxController {
   Axis get axis => vertical.value ? Axis.vertical : Axis.horizontal;
 
   /// The questions for a new session, shuffled as configured.
-  List<Question> prepare(List<Question> questions) {
+  /// [alwaysShuffle] ignores the shuffle settings (evaluation mode).
+  List<Question> prepare(
+    List<Question> questions, {
+    bool alwaysShuffle = false,
+  }) {
     final random = Random();
     final result = [
       for (final q in questions)
-        shuffleOptions.value ? q.withShuffledOptions(random) : q,
+        alwaysShuffle || shuffleOptions.value
+            ? q.withShuffledOptions(random)
+            : q,
     ];
-    if (shuffleQuestions.value) result.shuffle(random);
+    if (alwaysShuffle || shuffleQuestions.value) result.shuffle(random);
     return result;
   }
 

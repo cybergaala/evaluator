@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
-import '../../domain/entities/attempt.dart';
 import '../../domain/entities/evaluation.dart';
+import '../../domain/entities/history_entry.dart';
 import '../../domain/entities/question.dart';
-import '../../domain/usecases/save_attempt.dart';
+import '../../domain/usecases/save_history_entry.dart';
 import '../controllers/reading_settings_controller.dart';
 import '../widgets/confirm_exit.dart';
 import '../widgets/question_card.dart';
@@ -20,12 +20,10 @@ class ExamPage extends StatefulWidget {
 }
 
 class _ExamPageState extends State<ExamPage> {
-  final _saveAttempt = Get.find<SaveAttempt>();
+  final _save = Get.find<SaveHistoryEntry>();
   final _settings = ReadingSettingsController.i;
   final _pageController = PageController();
-  late List<Question> _questions = _settings.prepare(
-    widget.evaluation.questions,
-  );
+  late List<Question> _questions = _prepare();
   int _index = 0;
   final Set<int> _selected = {};
   int _correct = 0;
@@ -34,6 +32,17 @@ class _ExamPageState extends State<ExamPage> {
   Question get _current => _questions[_index];
   bool get _answered => _selected.length == _current.answers.length;
   bool get _revealed => _answered && !_settings.revealAtEnd.value;
+
+  List<Question> _prepare() =>
+      _settings.prepare(widget.evaluation.questions, alwaysShuffle: true);
+
+  Attempt _attempt() => Attempt(
+    widget.evaluation.id,
+    widget.evaluation.title,
+    DateTime.now(),
+    _correct,
+    _questions.length,
+  );
 
   @override
   void dispose() {
@@ -57,15 +66,8 @@ class _ExamPageState extends State<ExamPage> {
   }
 
   Future<void> _next() async {
+    if (_index == _questions.length - 1) return _finish();
     if (_current.isCorrect(_selected)) _correct++;
-    if (_index == _questions.length - 1) {
-      await _saveAttempt(
-        widget.evaluation.id,
-        Attempt(DateTime.now(), _correct, _questions.length),
-      );
-      setState(() => _finished = true);
-      return;
-    }
     setState(() {
       _index++;
       _selected.clear();
@@ -76,9 +78,42 @@ class _ExamPageState extends State<ExamPage> {
     );
   }
 
+  /// Counts the current question if answered; the rest count as wrong.
+  Future<void> _finish() async {
+    if (_answered && _current.isCorrect(_selected)) _correct++;
+    await _save(_attempt());
+    setState(() => _finished = true);
+  }
+
+  Future<void> _confirmFinish() async {
+    final left = _questions.length - _index - (_answered ? 1 : 0);
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('¿Finalizar evaluación?'),
+        content: Text(
+          left == 0
+              ? 'Se guardará tu resultado.'
+              : 'Quedan $left sin responder; cuentan como incorrectas.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Finalizar'),
+          ),
+        ],
+      ),
+    );
+    if (ok == true) await _finish();
+  }
+
   void _restart() {
     setState(() {
-      _questions = _settings.prepare(widget.evaluation.questions);
+      _questions = _prepare();
       _index = 0;
       _selected.clear();
       _correct = 0;
@@ -114,14 +149,21 @@ class _ExamPageState extends State<ExamPage> {
                     ].join(' · '),
             ),
             actions: [
-              IconButton(
-                tooltip: 'Ajustes de lectura',
-                onPressed: () => ReadingSettingsPanel.showSheet(
-                  context,
-                  showSliderToggle: false,
+              if (!_finished) ...[
+                IconButton(
+                  tooltip: 'Tamaño de texto',
+                  onPressed: () => ReadingSettingsPanel.showSheet(
+                    context,
+                    textSizeOnly: true,
+                  ),
+                  icon: const Icon(Icons.format_size),
                 ),
-                icon: const Icon(Icons.tune),
-              ),
+                IconButton(
+                  tooltip: 'Finalizar evaluación',
+                  onPressed: _confirmFinish,
+                  icon: const Icon(Icons.flag),
+                ),
+              ],
             ],
           ),
           body: SafeArea(
@@ -167,7 +209,7 @@ class _ExamPageState extends State<ExamPage> {
   }
 
   Widget _result(BuildContext context) {
-    final attempt = Attempt(DateTime.now(), _correct, _questions.length);
+    final attempt = _attempt();
     final textTheme = Theme.of(context).textTheme;
     return Center(
       child: Column(

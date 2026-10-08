@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../domain/entities/evaluation.dart';
+import '../../domain/entities/history_entry.dart';
 import '../../domain/entities/question.dart';
+import '../../domain/usecases/save_history_entry.dart';
 import '../controllers/bookmarks_controller.dart';
 import '../controllers/highlights_controller.dart';
 import '../controllers/reading_settings_controller.dart';
@@ -41,9 +43,34 @@ class _StudyPageState extends State<StudyPage>
   bool _sheetOpen = false;
   final _sheet = DraggableScrollableController();
   late final _tabs = TabController(length: 2, vsync: this);
+  final _saveHistory = Get.find<SaveHistoryEntry>();
+  // Study time; paused while the app is in the background.
+  final _clock = Stopwatch()..start();
+  late final _lifecycle = AppLifecycleListener(
+    onHide: _clock.stop,
+    onShow: _clock.start,
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    _lifecycle; // late: create it now so it starts listening.
+  }
 
   @override
   void dispose() {
+    _lifecycle.dispose();
+    // ponytail: fixed 10 s minimum so opening by mistake isn't logged.
+    if (_clock.elapsed >= const Duration(seconds: 10)) {
+      _saveHistory(
+        StudySession(
+          widget.evaluation.id,
+          widget.evaluation.title,
+          DateTime.now(),
+          _clock.elapsed,
+        ),
+      );
+    }
     _pageController.dispose();
     _sheet.dispose();
     _tabs.dispose();
