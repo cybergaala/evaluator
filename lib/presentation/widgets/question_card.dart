@@ -11,9 +11,6 @@ class QuestionCard extends StatelessWidget {
   final ValueChanged<int>? onTap;
   final bool showExplanation;
   final Widget? footer;
-
-  /// Shown at the top right, next to the question text.
-  final Widget? action;
   final double textScale;
 
   const QuestionCard({
@@ -23,7 +20,6 @@ class QuestionCard extends StatelessWidget {
     this.onTap,
     this.showExplanation = false,
     this.footer,
-    this.action,
     this.textScale = 1,
   });
 
@@ -43,20 +39,12 @@ class QuestionCard extends StatelessWidget {
           // Not primary: only grabs drags when the content overflows, so the
           // study PageView can swipe between cards.
           primary: false,
+          // Clamping on every platform, so reaching an edge emits
+          // OverscrollNotification (study page hands it to the pager).
+          physics: const ClampingScrollPhysics(),
           padding: const EdgeInsets.all(20),
           children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Text(
-                    question.question,
-                    style: theme.textTheme.titleLarge,
-                  ),
-                ),
-                ?action,
-              ],
-            ),
+            Text(question.question, style: theme.textTheme.titleLarge),
             if (question.isMultiAnswer)
               Padding(
                 padding: const EdgeInsets.only(top: 8),

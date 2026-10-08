@@ -20,7 +20,9 @@ class StudyPage extends StatefulWidget {
   State<StudyPage> createState() => _StudyPageState();
 }
 
-class _StudyPageState extends State<StudyPage> {
+class _StudyPageState extends State<StudyPage>
+    with SingleTickerProviderStateMixin {
+  static const _expanded = 0.7;
   final _settings = ReadingSettingsController.i;
   final _pageController = PageController();
   late final List<Question> _questions = _settings.prepare(
@@ -29,10 +31,17 @@ class _StudyPageState extends State<StudyPage> {
   final _bookmarks = BookmarksController.i;
   late Set<int> _bookmarked = _bookmarks.of(widget.evaluation.id);
   int _page = 0;
+  // Content is only built while the sheet is open, so the peek shows just
+  // the handle and tabs.
+  bool _sheetOpen = false;
+  final _sheet = DraggableScrollableController();
+  late final _tabs = TabController(length: 2, vsync: this);
 
   @override
   void dispose() {
     _pageController.dispose();
+    _sheet.dispose();
+    _tabs.dispose();
     super.dispose();
   }
 
@@ -45,52 +54,189 @@ class _StudyPageState extends State<StudyPage> {
     _pageController.jumpToPage(index);
   }
 
-  void _showBookmarks() {
-    showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      isScrollControlled: true,
-      builder: (context) => SafeArea(
-        child: StatefulBuilder(
-          builder: (context, setSheetState) {
-            // In session order, so it matches the slider and the counter.
-            final saved = [
-              for (var i = 0; i < _questions.length; i++)
-                if (_bookmarked.contains(_questions[i].id)) i,
-            ];
-            return ListView(
-              shrinkWrap: true,
-              children: [
-                ListTile(
-                  title: Text(
-                    'Guardadas',
-                    style: Theme.of(context).textTheme.titleMedium,
+  /// TikTok-style paging for long cards: once the card's own scroll hits an
+  /// edge, the rest of the drag moves the pager, then it snaps on release.
+  bool _handOver(ScrollNotification n, int index) {
+    final pager = _pageController.position;
+    if (n is OverscrollNotification && n.dragDetails != null) {
+      pager.jumpTo(
+        (pager.pixels + n.overscroll).clamp(
+          pager.minScrollExtent,
+          pager.maxScrollExtent,
+        ),
+      );
+    } else if (n is ScrollEndNotification) {
+      final delta = _pageController.page! - index;
+      // ponytail: fixed 20% threshold, add a fling-velocity rule if short
+      // flicks feel sticky.
+      if (delta != 0) {
+        _pageController.animateToPage(
+          delta.abs() > 0.2 ? index + delta.sign.toInt() : index,
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeOut,
+        );
+      }
+    }
+    return false;
+  }
+
+  void _expandSheet() => _sheet.animateTo(
+    _expanded,
+    duration: const Duration(milliseconds: 250),
+    curve: Curves.easeOut,
+  );
+
+  void _collapseSheet(double min) => _sheet.animateTo(
+    min,
+    duration: const Duration(milliseconds: 250),
+    curve: Curves.easeOut,
+  );
+
+  /// Bookmarks in session order, so they match the slider and the counter.
+  List<Widget> _bookmarkTiles(double minSize) {
+    final saved = [
+      for (var i = 0; i < _questions.length; i++)
+        if (_bookmarked.contains(_questions[i].id)) i,
+    ];
+    if (saved.isEmpty) {
+      return const [ListTile(title: Text('Sin preguntas guardadas'))];
+    }
+    return [
+      for (final i in saved)
+        ListTile(
+          leading: Text('${i + 1}'),
+          title: Text(
+            _questions[i].question,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+          selected: i == _page,
+          trailing: IconButton(
+            tooltip: 'Quitar',
+            icon: const Icon(Icons.bookmark_remove),
+            onPressed: () => _toggleBookmark(_questions[i].id),
+          ),
+          onTap: () {
+            _goTo(i);
+            _collapseSheet(minSize);
+          },
+        ),
+    ];
+  }
+
+  /// Always peeking at the bottom: handle + tabs. Tap a tab or drag up to open.
+  Widget _bottomSheet(BuildContext context, double minSize) {
+    final scheme = Theme.of(context).colorScheme;
+    final sheet = DraggableScrollableSheet(
+      controller: _sheet,
+      initialChildSize: minSize,
+      minChildSize: minSize,
+      maxChildSize: _expanded,
+      snap: true,
+      builder: (context, scrollController) => Material(
+        color: scheme.surfaceContainerLow,
+        elevation: 3,
+        clipBehavior: Clip.antiAlias,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        child: CustomScrollView(
+          controller: scrollController,
+          slivers: [
+            SliverToBoxAdapter(
+              child: Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 9),
+                    child: Container(
+                      width: 32,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: scheme.onSurfaceVariant.withValues(alpha: 0.4),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
                   ),
-                ),
-                if (saved.isEmpty)
-                  const ListTile(title: Text('Sin preguntas guardadas')),
-                for (final i in saved)
-                  ListTile(
-                    leading: Text('${i + 1}'),
-                    title: Text(
-                      _questions[i].question,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    selected: i == _page,
-                    trailing: IconButton(
-                      tooltip: 'Quitar',
-                      icon: const Icon(Icons.bookmark_remove),
-                      onPressed: () {
-                        _toggleBookmark(_questions[i].id);
-                        setSheetState(() {});
-                      },
-                    ),
-                    onTap: () {
-                      Navigator.pop(context);
-                      _goTo(i);
+                  TabBar(
+                    controller: _tabs,
+                    dividerHeight: 0,
+                    onTap: (_) {
+                      setState(() {});
+                      _expandSheet();
                     },
+                    tabs: [
+                      const Tab(text: 'Ajustes'),
+                      Tab(
+                        text: _bookmarked.isEmpty
+                            ? 'Guardadas'
+                            : 'Guardadas (${_bookmarked.length})',
+                      ),
+                    ],
                   ),
+                ],
+              ),
+            ),
+            if (!_sheetOpen)
+              const SliverToBoxAdapter()
+            else if (_tabs.index == 0)
+              const SliverToBoxAdapter(
+                child: ReadingSettingsPanel(showRevealAtEnd: false),
+              )
+            else
+              SliverList.list(children: _bookmarkTiles(minSize)),
+            // Room for the gesture bar.
+            SliverToBoxAdapter(
+              child: SizedBox(height: MediaQuery.paddingOf(context).bottom),
+            ),
+          ],
+        ),
+      ),
+    );
+    return NotificationListener<DraggableScrollableNotification>(
+      onNotification: (n) {
+        final open = n.extent > n.minExtent + 0.01;
+        if (open != _sheetOpen) setState(() => _sheetOpen = open);
+        return false;
+      },
+      child: sheet,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final current = _questions[_page];
+    return ConfirmExit(
+      message: '¿Quieres salir del modo estudio?',
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text('${_page + 1}/${_questions.length}'),
+          actions: [
+            if (_bookmarked.contains(current.id))
+              IconButton(
+                tooltip: 'Quitar de guardadas',
+                onPressed: () => _toggleBookmark(current.id),
+                icon: const Icon(Icons.bookmark_added),
+              )
+            else
+              IconButton(
+                tooltip: 'Guardar',
+                onPressed: () => _toggleBookmark(current.id),
+                icon: const Icon(Icons.bookmark_add_outlined),
+              ),
+          ],
+        ),
+        body: LayoutBuilder(
+          builder: (context, constraints) {
+            // Handle (22) + TabBar (48), plus the gesture bar under them.
+            final peek = 70 + MediaQuery.paddingOf(context).bottom;
+            final minSize = (peek / constraints.maxHeight).clamp(0.0, 0.5);
+            return Stack(
+              children: [
+                Padding(
+                  padding: EdgeInsets.only(bottom: peek),
+                  child: _pager(),
+                ),
+                _bottomSheet(context, minSize),
               ],
             );
           },
@@ -99,86 +245,45 @@ class _StudyPageState extends State<StudyPage> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return ConfirmExit(
-      message: '¿Quieres salir del modo estudio?',
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text('${_page + 1}/${_questions.length}'),
-          actions: [
-            IconButton(
-              tooltip: 'Ajustes de lectura',
-              onPressed: () => ReadingSettingsPanel.showSheet(
-                context,
-                showRevealAtEnd: false,
-              ),
-              icon: const Icon(Icons.tune),
-            ),
-          ],
-        ),
-        body: SafeArea(
-          top: false,
-          child: Obx(() {
-            // Read here: itemBuilder runs lazily, outside Obx's tracking.
-            final textScale = _settings.textScale.value;
-            final pager = PageView.builder(
-              controller: _pageController,
-              scrollDirection: _settings.axis,
-              itemCount: _questions.length,
-              onPageChanged: (index) => setState(() => _page = index),
-              itemBuilder: (context, index) {
-                final q = _questions[index];
-                return QuestionCard(
-                  question: q,
-                  optionState: (i) => q.answers.contains(i)
-                      ? OptionState.correct
-                      : OptionState.neutral,
-                  showExplanation: true,
-                  textScale: textScale,
-                  action: _bookmarked.contains(q.id)
-                      ? IconButton(
-                          tooltip: 'Quitar de guardadas',
-                          onPressed: () => _toggleBookmark(q.id),
-                          icon: const Icon(Icons.bookmark_added),
-                        )
-                      : IconButton(
-                          tooltip: 'Guardar',
-                          onPressed: () => _toggleBookmark(q.id),
-                          icon: const Icon(Icons.bookmark_add_outlined),
-                        ),
-                );
-              },
-            );
-            return Column(
-              children: [
-                // Quick jump between questions.
-                if (_settings.showSlider.value && _questions.length > 1)
-                  Slider(
-                    value: _page.toDouble(),
-                    max: _questions.length - 1.0,
-                    divisions: _questions.length - 1,
-                    label: '${_page + 1}',
-                    onChanged: (v) => _goTo(v.round()),
-                  ),
-                Expanded(child: pager),
-              ],
-            );
-          }),
-        ),
-        // Floats over the pager instead of taking space from it.
-        floatingActionButton: FloatingActionButton(
-          onPressed: _showBookmarks,
-          tooltip: 'Marcadores',
-          elevation: 0,
-          highlightElevation: 0,
-          child: Badge.count(
-            count: _bookmarked.length,
-            isLabelVisible: _bookmarked.isNotEmpty,
-            child: const Icon(Icons.bookmarks),
-          ),
-        ),
-      ),
+  Widget _pager() => Obx(() {
+    // Read here: itemBuilder runs lazily, outside Obx's tracking.
+    final textScale = _settings.textScale.value;
+    final vertical = _settings.axis == Axis.vertical;
+    final pager = PageView.builder(
+      controller: _pageController,
+      scrollDirection: _settings.axis,
+      itemCount: _questions.length,
+      onPageChanged: (index) => setState(() => _page = index),
+      itemBuilder: (context, index) {
+        final q = _questions[index];
+        final card = QuestionCard(
+          question: q,
+          optionState: (i) =>
+              q.answers.contains(i) ? OptionState.correct : OptionState.neutral,
+          showExplanation: true,
+          textScale: textScale,
+        );
+        // Horizontal paging doesn't fight the card's vertical scroll.
+        if (!vertical) return card;
+        return NotificationListener<ScrollNotification>(
+          onNotification: (n) => _handOver(n, index),
+          child: card,
+        );
+      },
     );
-  }
+    return Column(
+      children: [
+        // Quick jump between questions.
+        if (_settings.showSlider.value && _questions.length > 1)
+          Slider(
+            value: _page.toDouble(),
+            max: _questions.length - 1.0,
+            divisions: _questions.length - 1,
+            label: '${_page + 1}',
+            onChanged: (v) => _goTo(v.round()),
+          ),
+        Expanded(child: pager),
+      ],
+    );
+  });
 }
