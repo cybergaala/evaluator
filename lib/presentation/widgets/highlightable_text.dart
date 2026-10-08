@@ -59,9 +59,20 @@ class HighlightableText extends StatelessWidget {
   Widget build(BuildContext context) {
     final span = TextSpan(children: _spans());
     if (!selectable) return Text.rich(span, style: style);
+    // Own bucket: SelectableText's inner Scrollable shares the card ListView's
+    // PageStorage id, so it would restore that offset and animate back to 0.
+    return PageStorage(
+      bucket: PageStorageBucket(),
+      child: _selectable(context, span),
+    );
+  }
+
+  Widget _selectable(BuildContext context, TextSpan span) {
     return SelectableText.rich(
       span,
       style: style,
+      // SelectableText ignores DefaultTextStyle's alignment, Text.rich doesn't.
+      textAlign: DefaultTextStyle.of(context).textAlign,
       contextMenuBuilder: (context, state) {
         final sel = state.textEditingValue.selection;
         void paint(int? color) {

@@ -185,6 +185,7 @@ class _ExamPageState extends State<ExamPage> {
     final isLast = _index == _questions.length - 1;
     // Read here: itemBuilder runs lazily, outside Obx's tracking.
     final textScale = _settings.textScale.value;
+    final justify = _settings.justify.value;
     final revealed = _revealed;
     return PageView.builder(
       controller: _pageController,
@@ -199,6 +200,7 @@ class _ExamPageState extends State<ExamPage> {
           onTap: _select,
           showExplanation: q == _current && revealed,
           textScale: textScale,
+          justify: justify,
           footer: q == _current && _answered
               ? Padding(
                   padding: const EdgeInsets.only(top: 20),

@@ -36,8 +36,13 @@ void main() {
     await tester.tap(find.text('b'));
     await tester.tap(find.text('a'));
     await tester.pump();
-    expect(find.byIcon(Icons.check_circle), findsNothing);
-    expect(find.byIcon(Icons.radio_button_checked), findsOneWidget);
+    // Only the color tells the state: 'a' selected (not green), 'b' neutral.
+    ListTile tile(String text) => tester.widget<ListTile>(
+      find.ancestor(of: find.text(text), matching: find.byType(ListTile)),
+    );
+    final scheme = Theme.of(tester.element(find.text('a'))).colorScheme;
+    expect(tile('a').tileColor, scheme.secondaryContainer);
+    expect(tile('b').tileColor, isNull);
     expect(find.text('1/1'), findsOneWidget); // no running score
 
     await tester.tap(find.text('Ver resultado'));
