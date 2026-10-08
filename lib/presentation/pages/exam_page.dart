@@ -5,6 +5,7 @@ import '../../domain/entities/evaluation.dart';
 import '../../domain/entities/history_entry.dart';
 import '../../domain/entities/question.dart';
 import '../../domain/usecases/save_history_entry.dart';
+import '../controllers/progress_controller.dart';
 import '../controllers/reading_settings_controller.dart';
 import '../widgets/confirm_exit.dart';
 import '../widgets/question_card.dart';
@@ -22,11 +23,13 @@ class ExamPage extends StatefulWidget {
 class _ExamPageState extends State<ExamPage> {
   final _save = Get.find<SaveHistoryEntry>();
   final _settings = ReadingSettingsController.i;
-  final _pageController = PageController();
-  late List<Question> _questions = _prepare();
-  int _index = 0;
+  final _progress = ProgressController.i;
+  late final _saved = _progress.load('exam', widget.evaluation);
+  late List<Question> _questions = _saved?.questions ?? _prepare();
+  late int _index = _saved?.index ?? 0;
+  late final _pageController = PageController(initialPage: _index);
   final Set<int> _selected = {};
-  int _correct = 0;
+  late int _correct = _saved?.correct ?? 0;
   bool _finished = false;
 
   Question get _current => _questions[_index];
@@ -72,6 +75,8 @@ class _ExamPageState extends State<ExamPage> {
       _index++;
       _selected.clear();
     });
+    // ponytail: saved per answered question; picks on the current one are lost.
+    _progress.save('exam', widget.evaluation, _questions, _index, _correct);
     _pageController.nextPage(
       duration: const Duration(milliseconds: 250),
       curve: Curves.easeOut,
@@ -81,6 +86,7 @@ class _ExamPageState extends State<ExamPage> {
   /// Counts the current question if answered; the rest count as wrong.
   Future<void> _finish() async {
     if (_answered && _current.isCorrect(_selected)) _correct++;
+    _progress.clear('exam', widget.evaluation.id);
     await _save(_attempt());
     setState(() => _finished = true);
   }
@@ -137,7 +143,7 @@ class _ExamPageState extends State<ExamPage> {
     return Obx(
       () => ConfirmExit(
         enabled: !_finished,
-        message: 'Perderás el progreso de esta evaluación.',
+        message: 'Podrás continuar donde te quedaste.',
         child: Scaffold(
           appBar: AppBar(
             title: Text(

@@ -3,6 +3,7 @@ import 'package:evaluator/domain/entities/question.dart';
 import 'package:evaluator/domain/usecases/save_history_entry.dart';
 import 'package:evaluator/presentation/controllers/bookmarks_controller.dart';
 import 'package:evaluator/presentation/controllers/highlights_controller.dart';
+import 'package:evaluator/presentation/controllers/progress_controller.dart';
 import 'package:evaluator/presentation/controllers/reading_settings_controller.dart';
 import 'package:evaluator/presentation/pages/study_page.dart';
 import 'package:flutter/material.dart';
@@ -26,6 +27,7 @@ Future<ReadingSettingsController> setUpControllers() async {
   final prefs = await SharedPreferences.getInstance();
   Get.put(BookmarksController(prefs));
   Get.put(HighlightsController(prefs));
+  Get.put(ProgressController(prefs));
   Get.put(SaveHistoryEntry(FakeHistory()));
   // Typed: inside an async return, Get.put would infer FutureOr<...>.
   return Get.put<ReadingSettingsController>(ReadingSettingsController(prefs));

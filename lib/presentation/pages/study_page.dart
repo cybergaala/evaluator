@@ -7,6 +7,7 @@ import '../../domain/entities/question.dart';
 import '../../domain/usecases/save_history_entry.dart';
 import '../controllers/bookmarks_controller.dart';
 import '../controllers/highlights_controller.dart';
+import '../controllers/progress_controller.dart';
 import '../controllers/reading_settings_controller.dart';
 import '../widgets/confirm_exit.dart';
 import '../widgets/highlightable_text.dart';
@@ -28,16 +29,17 @@ class _StudyPageState extends State<StudyPage>
     with SingleTickerProviderStateMixin {
   static const _expanded = 0.7;
   final _settings = ReadingSettingsController.i;
-  final _pageController = PageController();
-  late final List<Question> _questions = _settings.prepare(
-    widget.evaluation.questions,
-  );
+  final _progress = ProgressController.i;
+  late final _saved = _progress.load('study', widget.evaluation);
+  late final List<Question> _questions =
+      _saved?.questions ?? _settings.prepare(widget.evaluation.questions);
+  late int _page = _saved?.index ?? 0;
+  late final _pageController = PageController(initialPage: _page);
   final _bookmarks = BookmarksController.i;
   late Set<int> _bookmarked = _bookmarks.of(widget.evaluation.id);
   final _highlights = HighlightsController.i;
   // Marker mode: text becomes selectable, so swiping on it no longer pages.
   bool _marker = false;
-  int _page = 0;
   // Content is only built while the sheet is open, so the peek shows just
   // the handle and tabs.
   bool _sheetOpen = false;
@@ -82,8 +84,14 @@ class _StudyPageState extends State<StudyPage>
   );
 
   void _goTo(int index) {
-    setState(() => _page = index);
+    _setPage(index);
     _pageController.jumpToPage(index);
+  }
+
+  /// Also saves where the session is, to resume it next time.
+  void _setPage(int index) {
+    setState(() => _page = index);
+    _progress.save('study', widget.evaluation, _questions, index);
   }
 
   /// TikTok-style paging for long cards: once the card's own scroll hits an
@@ -292,7 +300,7 @@ class _StudyPageState extends State<StudyPage>
       controller: _pageController,
       scrollDirection: _settings.axis,
       itemCount: _questions.length,
-      onPageChanged: (index) => setState(() => _page = index),
+      onPageChanged: _setPage,
       itemBuilder: (context, index) {
         final q = _questions[index];
         final card = QuestionCard(

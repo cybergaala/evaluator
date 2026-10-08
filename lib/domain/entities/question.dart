@@ -22,8 +22,11 @@ class Question {
       selected.length == answers.length && selected.every(answers.contains);
 
   /// Same question with its options in random order; [answers] follow them.
-  Question withShuffledOptions(Random random) {
-    final order = List.generate(options.length, (i) => i)..shuffle(random);
+  Question withShuffledOptions(Random random) =>
+      withOptionOrder(List.generate(options.length, (i) => i)..shuffle(random));
+
+  /// Same question showing `options[order[0]], options[order[1]], …`.
+  Question withOptionOrder(List<int> order) {
     return Question(
       id: id,
       question: question,

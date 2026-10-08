@@ -2,6 +2,7 @@ import 'package:evaluator/domain/entities/evaluation.dart';
 import 'package:evaluator/domain/entities/history_entry.dart';
 import 'package:evaluator/domain/entities/question.dart';
 import 'package:evaluator/domain/usecases/save_history_entry.dart';
+import 'package:evaluator/presentation/controllers/progress_controller.dart';
 import 'package:evaluator/presentation/controllers/reading_settings_controller.dart';
 import 'package:evaluator/presentation/pages/exam_page.dart';
 import 'package:flutter/material.dart';
@@ -18,6 +19,7 @@ void main() {
     SharedPreferences.setMockInitialValues({'reading_reveal_at_end': true});
     Get.put(ReadingSettingsController(await SharedPreferences.getInstance()));
     Get.put(SaveHistoryEntry(FakeHistory()));
+    Get.put(ProgressController(await SharedPreferences.getInstance()));
     addTearDown(Get.reset);
     final evaluation = Evaluation(
       id: 'e',
@@ -47,6 +49,7 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     Get.put(ReadingSettingsController(await SharedPreferences.getInstance()));
     Get.put(SaveHistoryEntry(FakeHistory()));
+    Get.put(ProgressController(await SharedPreferences.getInstance()));
     addTearDown(Get.reset);
     final evaluation = Evaluation(
       id: 'e',
@@ -90,6 +93,7 @@ void main() {
       );
       final history = FakeHistory();
       Get.put(SaveHistoryEntry(history));
+      Get.put(ProgressController(await SharedPreferences.getInstance()));
       addTearDown(Get.reset);
       final evaluation = Evaluation(
         id: 'e',
@@ -135,4 +139,47 @@ void main() {
       expect((saved.correct, saved.total), (1, 20));
     },
   );
+
+  testWidgets('resumes where it was left, then clears on finish', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    Get.put(ReadingSettingsController(prefs));
+    Get.put(SaveHistoryEntry(FakeHistory()));
+    Get.put(ProgressController(prefs));
+    addTearDown(Get.reset);
+    final evaluation = Evaluation(
+      id: 'e',
+      title: 'E',
+      questions: [
+        for (var i = 1; i <= 2; i++)
+          Question(id: i, question: 'Q$i', options: ['a', 'b'], answers: [0]),
+      ],
+    );
+    Future<void> open() => tester.pumpWidget(
+      GetMaterialApp(
+        home: ExamPage(key: UniqueKey(), evaluation: evaluation),
+      ),
+    );
+
+    await open();
+    final first = find.textContaining(RegExp(r'^Q\d$')).evaluate().first;
+    final firstText = (first.widget as Text).data!;
+    await tester.tap(find.text('a').first);
+    await tester.pump();
+    await tester.tap(find.text('Siguiente'));
+    await tester.pumpAndSettle();
+
+    await open(); // a fresh page, like reopening it from Inicio
+    await tester.pumpAndSettle();
+    expect(find.textContaining('2/2'), findsOneWidget);
+    expect(find.text(firstText), findsNothing);
+
+    await tester.tap(find.byIcon(Icons.flag));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Finalizar'));
+    await tester.pumpAndSettle();
+    expect(ProgressController.i.load('exam', evaluation), isNull);
+  });
 }

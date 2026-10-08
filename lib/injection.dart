@@ -16,6 +16,7 @@ import 'domain/usecases/get_history.dart';
 import 'domain/usecases/save_history_entry.dart';
 import 'presentation/controllers/bookmarks_controller.dart';
 import 'presentation/controllers/highlights_controller.dart';
+import 'presentation/controllers/progress_controller.dart';
 import 'presentation/controllers/reading_settings_controller.dart';
 import 'presentation/controllers/theme_controller.dart';
 
@@ -40,6 +41,7 @@ Future<void> initDependencies() async {
   Get.put(ReadingSettingsController(prefs));
   Get.put(BookmarksController(prefs));
   Get.put(HighlightsController(prefs));
+  Get.put(ProgressController(prefs));
 }
 
 /// One-time move of the old `history_<evaluationId>` lists (exam attempts
