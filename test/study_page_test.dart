@@ -1,6 +1,7 @@
 import 'package:evaluator/domain/entities/evaluation.dart';
 import 'package:evaluator/domain/entities/question.dart';
 import 'package:evaluator/presentation/controllers/bookmarks_controller.dart';
+import 'package:evaluator/presentation/controllers/highlights_controller.dart';
 import 'package:evaluator/presentation/controllers/reading_settings_controller.dart';
 import 'package:evaluator/presentation/pages/study_page.dart';
 import 'package:flutter/material.dart';
@@ -21,6 +22,7 @@ Future<ReadingSettingsController> setUpControllers() async {
   SharedPreferences.setMockInitialValues({});
   final prefs = await SharedPreferences.getInstance();
   Get.put(BookmarksController(prefs));
+  Get.put(HighlightsController(prefs));
   // Typed: inside an async return, Get.put would infer FutureOr<...>.
   return Get.put<ReadingSettingsController>(ReadingSettingsController(prefs));
 }
@@ -109,5 +111,35 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Sin preguntas guardadas'), findsOneWidget);
     expect(BookmarksController.i.of('e'), isEmpty);
+  });
+  testWidgets('marker mode paints the selection and persists it', (
+    tester,
+  ) async {
+    await setUpControllers();
+    addTearDown(Get.reset);
+    await tester.pumpWidget(
+      GetMaterialApp(home: StudyPage(evaluation: evaluation)),
+    );
+
+    await tester.tap(find.byTooltip('Resaltar texto'));
+    await tester.pumpAndSettle();
+    // Long press on the word (the text box is full width) selects it, then
+    // the toolbar shows the colors.
+    await tester.longPressAt(
+      tester.getTopLeft(find.text('Q1')) + const Offset(5, 5),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Resaltar').first);
+    await tester.pumpAndSettle();
+    expect(HighlightsController.i.of('e', 1, 'q'), [(0, 2, 0)]);
+
+    // Erase it again.
+    await tester.longPressAt(
+      tester.getTopLeft(find.text('Q1')) + const Offset(5, 5),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Borrar resaltado'));
+    await tester.pumpAndSettle();
+    expect(HighlightsController.i.of('e', 1, 'q'), isEmpty);
   });
 }

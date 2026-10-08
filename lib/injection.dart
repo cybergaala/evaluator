@@ -10,6 +10,7 @@ import 'domain/usecases/get_evaluations.dart';
 import 'domain/usecases/get_history.dart';
 import 'domain/usecases/save_attempt.dart';
 import 'presentation/controllers/bookmarks_controller.dart';
+import 'presentation/controllers/highlights_controller.dart';
 import 'presentation/controllers/reading_settings_controller.dart';
 import 'presentation/controllers/theme_controller.dart';
 
@@ -28,4 +29,5 @@ Future<void> initDependencies() async {
   Get.put(ThemeController(prefs));
   Get.put(ReadingSettingsController(prefs));
   Get.put(BookmarksController(prefs));
+  Get.put(HighlightsController(prefs));
 }
