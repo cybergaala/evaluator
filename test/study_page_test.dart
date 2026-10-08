@@ -48,6 +48,32 @@ void main() {
     expect(find.text('3/3'), findsOneWidget);
   });
 
+  testWidgets('a long card hands the drag to the pager at its end', (
+    tester,
+  ) async {
+    await setUpControllers();
+    addTearDown(Get.reset);
+    final long = Evaluation(
+      id: 'l',
+      title: 'L',
+      questions: [
+        for (var i = 1; i <= 2; i++)
+          Question(
+            id: i,
+            question: 'Q$i ${'long text ' * 300}',
+            options: ['a', 'b'],
+            answers: [0],
+          ),
+      ],
+    );
+    await tester.pumpWidget(MaterialApp(home: StudyPage(evaluation: long)));
+
+    // One drag: first scrolls the card to its end, the rest moves the pager.
+    await tester.drag(find.byType(ListView).first, const Offset(0, -20000));
+    await tester.pumpAndSettle();
+    expect(find.text('2/2'), findsOneWidget);
+  });
+
   testWidgets('slider jumps and bookmarks persist', (tester) async {
     await setUpControllers();
     addTearDown(Get.reset);
@@ -60,7 +86,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('3/3'), findsOneWidget);
 
-    // Save from the card's top-right button.
+    // Save from the AppBar.
     await tester.tap(find.byTooltip('Guardar'));
     await tester.pumpAndSettle();
     expect(find.byTooltip('Quitar de guardadas'), findsOneWidget);
@@ -70,14 +96,14 @@ void main() {
     await tester.drag(find.byType(Slider), const Offset(-1000, 0));
     await tester.pumpAndSettle();
     expect(find.text('1/3'), findsOneWidget);
-    await tester.tap(find.byTooltip('Marcadores'));
+    await tester.tap(find.textContaining('Guardadas ('));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Q3').last);
     await tester.pumpAndSettle();
     expect(find.text('3/3'), findsOneWidget);
 
     // Remove it from the list's trailing action.
-    await tester.tap(find.byTooltip('Marcadores'));
+    await tester.tap(find.textContaining('Guardadas ('));
     await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('Quitar'));
     await tester.pumpAndSettle();
