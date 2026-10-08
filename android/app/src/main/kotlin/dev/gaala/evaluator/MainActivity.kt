@@ -1,4 +1,4 @@
-package com.example.evaluator
+package dev.gaala.evaluator
 
 import io.flutter.embedding.android.FlutterActivity
 
