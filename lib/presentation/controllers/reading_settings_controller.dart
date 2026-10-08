@@ -14,6 +14,7 @@ class ReadingSettingsController extends GetxController {
   final SharedPreferences _prefs;
 
   late final textScale = _double('reading_text_scale', 1.0);
+  late final justify = _bool('reading_justify', false);
   late final vertical = _bool('reading_vertical', true);
   late final shuffleQuestions = _bool('reading_shuffle_questions', false);
   late final shuffleOptions = _bool('reading_shuffle_options', false);

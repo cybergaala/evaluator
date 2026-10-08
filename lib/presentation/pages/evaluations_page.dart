@@ -51,6 +51,44 @@ class _EvaluationsPageState extends State<EvaluationsPage>
     await _load(); // pick up new scores
   }
 
+  /// Opens [mode] for [e], asking first whether to resume or start over
+  /// when there is an unfinished session.
+  Future<void> _start(String mode, Evaluation e) async {
+    final saved = ProgressController.i.load(mode, e);
+    if (saved != null) {
+      final resume = await showModalBottomSheet<bool>(
+        context: context,
+        showDragHandle: true,
+        builder: (context) => SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.play_arrow),
+                title: const Text('Continuar'),
+                subtitle: Text(
+                  'Pregunta ${saved.index + 1} de ${saved.questions.length}',
+                ),
+                onTap: () => Navigator.pop(context, true),
+              ),
+              ListTile(
+                leading: const Icon(Icons.restart_alt),
+                title: const Text('Empezar de nuevo'),
+                subtitle: const Text('Se descarta el progreso actual'),
+                onTap: () => Navigator.pop(context, false),
+              ),
+            ],
+          ),
+        ),
+      );
+      if (resume == null) return;
+      if (!resume) ProgressController.i.clear(mode, e.id);
+    }
+    await _open(
+      mode == 'study' ? StudyPage(evaluation: e) : ExamPage(evaluation: e),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
@@ -78,6 +116,7 @@ class _EvaluationsPageState extends State<EvaluationsPage>
                 final e = _evaluations[index];
                 final history = _history[e.id] ?? [];
                 final last = history.isEmpty ? null : history.first;
+                final study = ProgressController.i.load('study', e);
                 final exam = ProgressController.i.load('exam', e);
                 return Card(
                   margin: const EdgeInsets.symmetric(
@@ -94,8 +133,10 @@ class _EvaluationsPageState extends State<EvaluationsPage>
                           [
                             '${e.questions.length} preguntas',
                             if (last != null) 'último: ${last.percent}%',
+                            if (study != null)
+                              'estudio: ${study.index + 1}/${study.questions.length}',
                             if (exam != null)
-                              'en curso: ${exam.index + 1}/${exam.questions.length}',
+                              'evaluación: ${exam.index + 1}/${exam.questions.length}',
                           ].join(' · '),
                         ),
                       ),
@@ -107,16 +148,15 @@ class _EvaluationsPageState extends State<EvaluationsPage>
                               child: FilledButton.tonalIcon(
                                 icon: const Icon(Icons.menu_book),
                                 label: const Text('Estudiar'),
-                                onPressed: () =>
-                                    _open(StudyPage(evaluation: e)),
+                                onPressed: () => _start('study', e),
                               ),
                             ),
                             const SizedBox(width: 8),
                             Expanded(
                               child: FilledButton.icon(
                                 icon: const Icon(Icons.assignment),
-                                label: const Text('Evaluación'),
-                                onPressed: () => _open(ExamPage(evaluation: e)),
+                                label: const Text('Evaluar'),
+                                onPressed: () => _start('exam', e),
                               ),
                             ),
                           ],

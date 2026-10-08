@@ -9,7 +9,7 @@ class ReadingSettingsPanel extends StatelessWidget {
   /// Hidden in study mode, where answers are always shown.
   final bool showRevealAtEnd;
 
-  /// Evaluation mode: only the text size can change there.
+  /// Evaluation mode: only the text size and alignment can change there.
   final bool textSizeOnly;
 
   const ReadingSettingsPanel({
@@ -52,20 +52,29 @@ class ReadingSettingsPanel extends StatelessWidget {
           ),
           Slider(
             value: s.textScale.value,
-            min: 0.8,
+            min: 0.5,
             max: 1.6,
-            divisions: 8,
+            divisions: 11,
             onChanged: (v) => s.textScale.value = v,
           ),
+          ListTile(
+            leading: const Icon(Icons.format_align_left),
+            title: const Text('Alineación de texto'),
+            trailing: _choice(
+              value: s.justify,
+              no: (Icons.format_align_left, 'Izquierda'),
+              yes: (Icons.format_align_justify, 'Justificado'),
+            ),
+          ),
           if (!textSizeOnly) ...[
-            SwitchListTile(
-              secondary: Icon(
-                s.vertical.value ? Icons.swap_vert : Icons.swap_horiz,
+            ListTile(
+              leading: const Icon(Icons.swipe),
+              title: const Text('Desplazamiento'),
+              trailing: _choice(
+                value: s.vertical,
+                no: (Icons.swap_horiz, 'Horizontal'),
+                yes: (Icons.swap_vert, 'Vertical'),
               ),
-              title: const Text('Modo de desplazamiento'),
-              subtitle: Text(s.vertical.value ? 'Vertical' : 'Horizontal'),
-              value: s.vertical.value,
-              onChanged: (v) => s.vertical.value = v,
             ),
             SwitchListTile(
               secondary: const Icon(Icons.shuffle),
@@ -109,4 +118,20 @@ class ReadingSettingsPanel extends StatelessWidget {
       ),
     );
   }
+
+  /// Two-option segmented control (iOS-like) for a setting that is a choice
+  /// rather than an on/off toggle.
+  Widget _choice({
+    required RxBool value,
+    required (IconData, String) no,
+    required (IconData, String) yes,
+  }) => SegmentedButton<bool>(
+    showSelectedIcon: false,
+    segments: [
+      for (final (v, (icon, label)) in [(false, no), (true, yes)])
+        ButtonSegment(value: v, icon: Icon(icon), tooltip: label),
+    ],
+    selected: {value.value},
+    onSelectionChanged: (v) => value.value = v.first,
+  );
 }

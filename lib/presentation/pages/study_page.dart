@@ -295,6 +295,7 @@ class _StudyPageState extends State<StudyPage>
   Widget _pager() => Obx(() {
     // Read here: itemBuilder runs lazily, outside Obx's tracking.
     final textScale = _settings.textScale.value;
+    final justify = _settings.justify.value;
     final vertical = _settings.axis == Axis.vertical;
     final pager = PageView.builder(
       controller: _pageController,
@@ -309,6 +310,7 @@ class _StudyPageState extends State<StudyPage>
               q.answers.contains(i) ? OptionState.correct : OptionState.neutral,
           showExplanation: true,
           textScale: textScale,
+          justify: justify,
           textBuilder: (field, text, style) => HighlightableText(
             text: text,
             style: style,
