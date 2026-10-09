@@ -410,7 +410,8 @@ class _StudyPageState extends State<StudyPage>
   Widget build(BuildContext context) {
     final current = _shown[_page];
     return ConfirmExit(
-      message: '¿Quieres salir del modo estudio?',
+      title: '¿Salir del modo estudio?',
+      message: 'Al volver seguirás en esta pregunta.',
       child: Scaffold(
         appBar: AppBar(
           title: Text('${_page + 1}/${_shown.length}'),

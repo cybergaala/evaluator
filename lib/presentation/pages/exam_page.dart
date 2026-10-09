@@ -148,6 +148,7 @@ class _ExamPageState extends State<ExamPage> {
     return Obx(
       () => ConfirmExit(
         enabled: !_finished,
+        title: '¿Salir de la evaluación?',
         message: 'Podrás continuar donde te quedaste.',
         child: Scaffold(
           appBar: AppBar(
