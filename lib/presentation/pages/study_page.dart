@@ -122,8 +122,7 @@ class _StudyPageState extends State<StudyPage> with TickerProviderStateMixin {
     }
   }
 
-  /// Opens the current question and its options in the system translator
-  /// (Google Translate's PROCESS_TEXT action).
+  /// Translates the current question and its options.
   Future<void> _translate() async {
     final q = _shown[_page];
     final text = [
