@@ -1,3 +1,5 @@
+import 'dart:async' show scheduleMicrotask;
+
 import 'package:flutter/gestures.dart' show Drag;
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -52,6 +54,8 @@ class _StudyPageState extends State<StudyPage>
   bool _sliding = false;
   // The pager's drag while a long card hands its overscroll over.
   Drag? _pagerDrag;
+  // The page (in pixels) the hand-over left: moving back ends it there.
+  double _handOverFrom = 0;
   late final _pageController = PageController(initialPage: _page);
   final _bookmarks = BookmarksController.i;
   late Set<int> _bookmarked = _bookmarks.of(widget.evaluation.id);
@@ -190,13 +194,26 @@ class _StudyPageState extends State<StudyPage>
   /// (page physics: distance and fling velocity).
   // Not jumpTo: it ends with a ballistic snap, so the page sprang back on its
   // own while the finger was still down.
+  /// Meanwhile the card is held ([_HeldPhysics]): moving back returns the
+  /// pager to its page first, and only then scrolls the card again.
   bool _handOver(ScrollNotification n) {
     if (n is OverscrollNotification && n.dragDetails != null) {
-      _pagerDrag ??= _pageController.position.drag(
-        DragStartDetails(globalPosition: n.dragDetails!.globalPosition),
-        () => _pagerDrag = null,
-      );
-      final delta = -n.overscroll;
+      final pager = _pageController.position;
+      if (_pagerDrag == null) {
+        _handOverFrom = _pageController.page!.round() * pager.viewportDimension;
+        _pagerDrag = pager.drag(
+          DragStartDetails(globalPosition: n.dragDetails!.globalPosition),
+          () => _pagerDrag = null,
+        );
+      }
+      // A reversed card (opened at its end) counts its offset upwards.
+      var delta = n.metrics.axisDirection == AxisDirection.up
+          ? n.overscroll
+          : -n.overscroll;
+      // Back on (or past) the page it left: stop there and release the card.
+      final off = pager.pixels - _handOverFrom;
+      final back = off != 0 && (off - delta).sign != off.sign;
+      if (back) delta = off;
       _pagerDrag!.update(
         DragUpdateDetails(
           globalPosition: n.dragDetails!.globalPosition,
@@ -204,11 +221,27 @@ class _StudyPageState extends State<StudyPage>
           primaryDelta: delta,
         ),
       );
+      if (back) _pagerDrag?.end(DragEndDetails(primaryVelocity: 0));
     } else if (n is ScrollEndNotification) {
       _pagerDrag?.end(n.dragDetails ?? DragEndDetails(primaryVelocity: 0));
     }
     return false;
   }
+
+  /// On lifting the finger, after the gesture recognizers ran (microtask):
+  /// - Ends a hand-over drag still alive: a card that flings back (the finger
+  ///   moved back before lifting) sends no ScrollEnd until its fling stops, so
+  ///   the pager stayed between two pages.
+  /// - Lets the cards take touches during the snap: it inherits the drag's
+  ///   "ignore touches" flag, so for its ~300 ms a swipe on the arriving card
+  ///   dragged the pager on instead, leaving both pages cut. A card that hands
+  ///   over at its edge still interrupts the snap.
+  void _releasePager(PointerEvent _) => scheduleMicrotask(() {
+    _pagerDrag?.end(DragEndDetails(primaryVelocity: 0));
+    if (_pageController.hasClients) {
+      _pageController.position.context.setIgnorePointer(false);
+    }
+  });
 
   void _expandSheet() => _sheet.animateTo(
     _expanded,
@@ -270,7 +303,7 @@ class _StudyPageState extends State<StudyPage>
       maxChildSize: _expanded,
       snap: true,
       builder: (context, scrollController) => Material(
-        color: scheme.surfaceContainerLow,
+        color: scheme.surfaceContainerHigh,
         elevation: 3,
         clipBehavior: Clip.antiAlias,
         shape: const RoundedRectangleBorder(
@@ -377,7 +410,8 @@ class _StudyPageState extends State<StudyPage>
   Widget build(BuildContext context) {
     final current = _shown[_page];
     return ConfirmExit(
-      message: '¿Quieres salir del modo estudio?',
+      title: '¿Salir del modo estudio?',
+      message: 'Al volver seguirás en esta pregunta.',
       child: Scaffold(
         appBar: AppBar(
           title: Text('${_page + 1}/${_shown.length}'),
@@ -429,7 +463,11 @@ class _StudyPageState extends State<StudyPage>
             // blank space, so a zigzag left there by a cancelled swipe hides
             // behind the sheet.
             return Stack(
-              children: [_pager(peek), _bottomSheet(context, minSize)],
+              children: [
+                _pager(peek),
+                _slider(peek),
+                _bottomSheet(context, minSize),
+              ],
             );
           },
         ),
@@ -443,8 +481,11 @@ class _StudyPageState extends State<StudyPage>
     final justify = _settings.justify.value;
     final vertical = _settings.axis == Axis.vertical;
     final hideAnswers = _settings.hideAnswers.value;
+    // Also room for the slider pill, so the last lines can scroll above it.
+    final bottomSpace = peek + (_hasSlider ? _pillHeight + 8 : 0);
     final pager = PageView.builder(
       controller: _pageController,
+      physics: const _SnapPhysics(parent: ClampingScrollPhysics()),
       scrollDirection: _settings.axis,
       itemCount: _shown.length,
       onPageChanged: _setPage,
@@ -452,8 +493,12 @@ class _StudyPageState extends State<StudyPage>
         final q = _shown[index];
         final hidden = hideAnswers && !_revealed.contains(q.id);
         void reveal() => setState(() => _revealed.add(q.id));
-        final card = QuestionCard(
+        Widget card([bool reverse = false]) => QuestionCard(
           question: q,
+          reverse: reverse,
+          physics: vertical
+              ? _HeldPhysics(() => _pagerDrag != null)
+              : const ClampingScrollPhysics(),
           optionState: (i) => !hidden && q.answers.contains(i)
               ? OptionState.correct
               : OptionState.neutral,
@@ -473,7 +518,7 @@ class _StudyPageState extends State<StudyPage>
           justify: justify,
           // Behind the sheet, inside the scroll so the text can still reach
           // above it; the zigzag of the next page sits in the middle of it.
-          bottomSpace: peek,
+          bottomSpace: bottomSpace,
           textBuilder: (field, text, style) => HighlightableText(
             text: text,
             style: style,
@@ -492,20 +537,24 @@ class _StudyPageState extends State<StudyPage>
           ),
         );
         // Horizontal paging doesn't fight the card's vertical scroll.
-        if (!vertical) return card;
+        if (!vertical) return card();
         return Stack(
           clipBehavior: Clip.none,
           children: [
             NotificationListener<ScrollNotification>(
               onNotification: _handOver,
-              child: card,
+              // Entering from above (going back), so it shows its end. The
+              // pager's real position, not _page: a fast swipe can cross the
+              // middle before this page is first built.
+              child: _CardScroll(atEnd: index < _pagerPosition, builder: card),
             ),
             // Above the page, centered in the previous page's bottom space, so
-            // both questions get the same room around it. Seen only while
+            // both questions get the same room around it (blank: a page
+            // entering from above opens at its end). Seen only while
             // swiping: the pager clips it once the page settles.
             if (index > 0)
               Positioned(
-                top: -(peek + _Zigzag.height) / 2,
+                top: -(bottomSpace + _Zigzag.height) / 2,
                 left: 0,
                 right: 0,
                 child: _Zigzag(),
@@ -514,27 +563,82 @@ class _StudyPageState extends State<StudyPage>
         );
       },
     );
-    return Column(
-      children: [
-        // Quick jump between questions.
-        if (_settings.showSlider.value && _shown.length > 1)
-          Slider(
-            value: _page.toDouble(),
-            max: _shown.length - 1.0,
-            divisions: _shown.length - 1,
-            label: '${_page + 1}',
-            onChangeStart: (_) => _sliding = true,
-            onChanged: (v) => _goTo(v.round()),
-            onChangeEnd: (_) {
-              _sliding = false;
-              _saveProgress();
-            },
-          ),
-        Expanded(child: pager),
-      ],
+    return Listener(
+      onPointerUp: _releasePager,
+      onPointerCancel: _releasePager,
+      child: pager,
     );
   });
+
+  double get _pagerPosition =>
+      _pageController.hasClients && _pageController.position.haveDimensions
+      ? _pageController.page!
+      : _page.toDouble();
+
+  bool get _hasSlider => _settings.showSlider.value && _shown.length > 1;
+
+  /// Quick jump between questions: a pill floating above the sheet, hidden
+  /// while the sheet is open.
+  Widget _slider(double peek) => Positioned(
+    left: 16,
+    right: 16,
+    bottom: peek + 8,
+    child: Obx(() {
+      if (!_hasSlider) return const SizedBox.shrink();
+      final scheme = Theme.of(context).colorScheme;
+      final number = Theme.of(context).textTheme.titleMedium;
+      return IgnorePointer(
+        ignoring: _sheetOpen,
+        child: AnimatedSlide(
+          offset: Offset(0, _sheetOpen ? 0.5 : 0),
+          duration: const Duration(milliseconds: 200),
+          child: AnimatedOpacity(
+            opacity: _sheetOpen ? 0 : 1,
+            duration: const Duration(milliseconds: 200),
+            child: Material(
+              color: scheme.surfaceContainerHigh,
+              shape: const StadiumBorder(),
+              child: SizedBox(
+                height: _pillHeight,
+                child: Row(
+                  children: [
+                    const SizedBox(width: 20),
+                    Text('${_page + 1}', style: number),
+                    Expanded(
+                      child: SliderTheme(
+                        data: SliderTheme.of(context).copyWith(
+                          tickMarkShape: _EveryNTickMark(_shown.length),
+                        ),
+                        child: Slider(
+                          // ignore: deprecated_member_use
+                          year2023: false,
+                          value: _page.toDouble(),
+                          max: _shown.length - 1.0,
+                          divisions: _shown.length - 1,
+                          label: '${_page + 1}',
+                          onChangeStart: (_) => _sliding = true,
+                          onChanged: (v) => _goTo(v.round()),
+                          onChangeEnd: (_) {
+                            _sliding = false;
+                            _saveProgress();
+                          },
+                        ),
+                      ),
+                    ),
+                    Text('${_shown.length}', style: number),
+                    const SizedBox(width: 20),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }),
+  );
 }
+
+const _pillHeight = 56.0;
 
 /// Finds a question by its text or options; returns its page.
 class _QuestionSearch extends SearchDelegate<int?> {
@@ -596,6 +700,65 @@ class _QuestionSearch extends SearchDelegate<int?> {
   }
 }
 
+/// A page's card, opened at its end when [atEnd], so a page coming back from
+/// above meets the next one with its blank bottom space, under the zigzag,
+/// instead of half its text.
+class _CardScroll extends StatefulWidget {
+  final bool atEnd;
+  final Widget Function(bool reverse) builder;
+
+  const _CardScroll({required this.atEnd, required this.builder});
+
+  @override
+  State<_CardScroll> createState() => _CardScrollState();
+}
+
+class _CardScrollState extends State<_CardScroll> {
+  // Fixed on creation: the current page changes halfway through a swipe.
+  late final _atEnd = widget.atEnd;
+
+  // Own bucket, so no offset is restored: a page always enters at the edge
+  // that faces the page it comes from (and a reversed offset means another
+  // spot anyway).
+  final _bucket = PageStorageBucket();
+
+  @override
+  Widget build(BuildContext context) =>
+      PageStorage(bucket: _bucket, child: widget.builder(_atEnd));
+}
+
+/// A card's scroll that stays put while [held]: the whole move comes out as
+/// overscroll, which the study page hands to the pager.
+class _HeldPhysics extends ClampingScrollPhysics {
+  final bool Function() held;
+
+  const _HeldPhysics(this.held, {super.parent});
+
+  @override
+  _HeldPhysics applyTo(ScrollPhysics? ancestor) =>
+      _HeldPhysics(held, parent: buildParent(ancestor));
+
+  @override
+  double applyBoundaryConditions(ScrollMetrics position, double value) => held()
+      ? value - position.pixels
+      : super.applyBoundaryConditions(position, value);
+}
+
+/// A quicker page snap. While the pager animates it keeps touches from the
+/// cards, and the default spring crawls its last pixel for ~800 ms: a swipe
+/// to read the page that had just arrived moved the pager instead, cutting it.
+class _SnapPhysics extends ScrollPhysics {
+  const _SnapPhysics({super.parent});
+
+  @override
+  _SnapPhysics applyTo(ScrollPhysics? ancestor) =>
+      _SnapPhysics(parent: buildParent(ancestor));
+
+  @override
+  SpringDescription get spring =>
+      SpringDescription.withDampingRatio(mass: 0.5, stiffness: 500, ratio: 1);
+}
+
 /// A zigzag line across the page, between questions in vertical paging.
 class _Zigzag extends StatelessWidget {
   static const height = 10.0;
@@ -639,4 +802,45 @@ class _ZigzagPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_ZigzagPainter old) => old.color != color;
+}
+
+/// One slider dot every [step] questions, so long banks still show a few.
+/// Zero preferred size: the slider never skips the ticks as "too dense".
+class _EveryNTickMark extends SliderTickMarkShape {
+  // ponytail: the slider paints ticks left to right without their index, so
+  // it is counted here; assumes a left-to-right slider.
+  _EveryNTickMark(int count)
+    : step = count <= 20 ? 1 : (count / 20 / 5).ceil() * 5;
+
+  final int step;
+  int _index = 0;
+  double _lastX = double.infinity;
+
+  @override
+  Size getPreferredSize({
+    required SliderThemeData sliderTheme,
+    required bool isEnabled,
+  }) => Size.zero;
+
+  @override
+  void paint(
+    PaintingContext context,
+    Offset center, {
+    required RenderBox parentBox,
+    required SliderThemeData sliderTheme,
+    required Animation<double> enableAnimation,
+    required TextDirection textDirection,
+    required Offset thumbCenter,
+    required bool isEnabled,
+  }) {
+    // A new pass over the ticks starts back at the left.
+    _index = center.dx <= _lastX ? 0 : _index + 1;
+    _lastX = center.dx;
+    if (_index % step != 0) return;
+    final active = center.dx <= thumbCenter.dx;
+    final color = active
+        ? sliderTheme.activeTickMarkColor
+        : sliderTheme.inactiveTickMarkColor;
+    context.canvas.drawCircle(center, 2, Paint()..color = color!);
+  }
 }
