@@ -22,6 +22,9 @@ class QuestionCard extends StatelessWidget {
   /// lines (study mode, a page entering from above).
   final bool reverse;
 
+  /// The scroll physics; must stay clamping (see [build]).
+  final ScrollPhysics physics;
+
   /// Builds each text (`field`: `q` question, `o<i>` option, `e`
   /// explanation). Defaults to plain [Text]; study mode passes a highlighter.
   final Widget Function(String field, String text, TextStyle? style)?
@@ -38,6 +41,7 @@ class QuestionCard extends StatelessWidget {
     this.justify = false,
     this.bottomSpace = 0,
     this.reverse = false,
+    this.physics = const ClampingScrollPhysics(),
     this.textBuilder,
   });
 
@@ -76,7 +80,7 @@ class QuestionCard extends StatelessWidget {
           reverse: reverse,
           // Clamping on every platform, so reaching an edge emits
           // OverscrollNotification (study page hands it to the pager).
-          physics: const ClampingScrollPhysics(),
+          physics: physics,
           // Left clears the option letters, which stick out of the tiles.
           padding: EdgeInsets.fromLTRB(24, 20, 24, 20 + bottomSpace),
           child: Column(

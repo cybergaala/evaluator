@@ -126,6 +126,144 @@ void main() {
     expect(card1.reverse, isTrue);
   });
 
+  testWidgets('a swipe during the snap scrolls the arriving card', (
+    tester,
+  ) async {
+    await setUpControllers();
+    addTearDown(Get.reset);
+    final ev = Evaluation(
+      id: 'm',
+      title: 'M',
+      questions: [
+        Question(id: 1, question: 'Q1', options: ['a', 'b'], answers: [0]),
+        for (var i = 2; i <= 3; i++)
+          Question(
+            id: i,
+            question: 'Q$i ${'long text ' * 300}',
+            options: ['a', 'b'],
+            answers: [0],
+          ),
+      ],
+    );
+    await tester.pumpWidget(MaterialApp(home: StudyPage(evaluation: ev)));
+    final pager = tester.widget<PageView>(find.byType(PageView)).controller!;
+
+    await tester.fling(find.text('Q1'), const Offset(0, -300), 2000);
+    await tester.pump(); // starts the snap animation's clock
+    await tester.pump(const Duration(milliseconds: 60));
+    expect(pager.page, lessThan(1)); // still snapping
+    await tester.dragFrom(
+      tester.getRect(find.byType(PageView)).topCenter + const Offset(0, 400),
+      const Offset(0, -300),
+    );
+    await tester.pumpAndSettle();
+    // The swipe scrolled card 2 instead of dragging the pager past it.
+    expect(pager.page, 1);
+    final card2 = tester.state<ScrollableState>(
+      find.descendant(
+        of: find.byType(SingleChildScrollView).last,
+        matching: find.byType(Scrollable),
+      ),
+    );
+    expect(card2.position.pixels, greaterThan(0));
+  });
+
+  testWidgets('pulling back before lifting still lands on a page', (
+    tester,
+  ) async {
+    await setUpControllers();
+    addTearDown(Get.reset);
+    final long = Evaluation(
+      id: 'p',
+      title: 'P',
+      questions: [
+        for (var i = 1; i <= 2; i++)
+          Question(
+            id: i,
+            question: 'Q$i ${'long text ' * 300}',
+            options: ['a', 'b'],
+            answers: [0],
+          ),
+      ],
+    );
+    await tester.pumpWidget(MaterialApp(home: StudyPage(evaluation: long)));
+    final pager = tester.widget<PageView>(find.byType(PageView)).controller!;
+
+    final gesture = await tester.startGesture(
+      tester.getCenter(find.byType(SingleChildScrollView).first),
+    );
+    while (pager.page! < 0.3) {
+      await gesture.moveBy(const Offset(0, -50));
+      await tester.pump();
+    }
+    // The finger moves back quickly: the card leaves its end, so on release
+    // it flings (no ScrollEnd) instead of going idle. Timestamps give it a
+    // velocity.
+    for (var i = 1; i <= 5; i++) {
+      await gesture.moveBy(
+        const Offset(0, 40),
+        timeStamp: Duration(milliseconds: 1000 + 16 * i),
+      );
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    await gesture.up(timeStamp: const Duration(milliseconds: 1096));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
+    expect(pager.page, pager.page!.roundToDouble());
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets('moving back during a hand-over returns the pager first', (
+    tester,
+  ) async {
+    await setUpControllers();
+    addTearDown(Get.reset);
+    final long = Evaluation(
+      id: 'b',
+      title: 'B',
+      questions: [
+        for (var i = 1; i <= 2; i++)
+          Question(
+            id: i,
+            question: 'Q$i ${'long text ' * 300}',
+            options: ['a', 'b'],
+            answers: [0],
+          ),
+      ],
+    );
+    await tester.pumpWidget(MaterialApp(home: StudyPage(evaluation: long)));
+    final pager = tester.widget<PageView>(find.byType(PageView)).controller!;
+    final card = tester.state<ScrollableState>(
+      find.descendant(
+        of: find.byType(SingleChildScrollView).first,
+        matching: find.byType(Scrollable),
+      ),
+    );
+
+    final gesture = await tester.startGesture(
+      tester.getCenter(find.byType(SingleChildScrollView).first),
+    );
+    while (pager.page! < 0.3) {
+      await gesture.moveBy(const Offset(0, -50));
+      await tester.pump();
+    }
+    final end = card.position.pixels;
+    // Holding, then moving back: the pager returns, the card stays at its end.
+    while (pager.page! > 0) {
+      await gesture.moveBy(const Offset(0, 30));
+      await tester.pump();
+      expect(card.position.pixels, end);
+    }
+    expect(pager.page, 0);
+    // Back on its page, the card scrolls again.
+    await gesture.moveBy(const Offset(0, 100));
+    await tester.pump();
+    expect(card.position.pixels, lessThan(end));
+    await gesture.up();
+    await tester.pumpAndSettle();
+    expect(pager.page, 0);
+  });
+
   testWidgets('a swipe right after a page snaps scrolls the new card', (
     tester,
   ) async {

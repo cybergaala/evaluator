@@ -1,3 +1,5 @@
+import 'dart:async' show scheduleMicrotask;
+
 import 'package:flutter/gestures.dart' show Drag;
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -52,6 +54,8 @@ class _StudyPageState extends State<StudyPage>
   bool _sliding = false;
   // The pager's drag while a long card hands its overscroll over.
   Drag? _pagerDrag;
+  // The page (in pixels) the hand-over left: moving back ends it there.
+  double _handOverFrom = 0;
   late final _pageController = PageController(initialPage: _page);
   final _bookmarks = BookmarksController.i;
   late Set<int> _bookmarked = _bookmarks.of(widget.evaluation.id);
@@ -190,16 +194,26 @@ class _StudyPageState extends State<StudyPage>
   /// (page physics: distance and fling velocity).
   // Not jumpTo: it ends with a ballistic snap, so the page sprang back on its
   // own while the finger was still down.
+  /// Meanwhile the card is held ([_HeldPhysics]): moving back returns the
+  /// pager to its page first, and only then scrolls the card again.
   bool _handOver(ScrollNotification n) {
     if (n is OverscrollNotification && n.dragDetails != null) {
-      _pagerDrag ??= _pageController.position.drag(
-        DragStartDetails(globalPosition: n.dragDetails!.globalPosition),
-        () => _pagerDrag = null,
-      );
+      final pager = _pageController.position;
+      if (_pagerDrag == null) {
+        _handOverFrom = _pageController.page!.round() * pager.viewportDimension;
+        _pagerDrag = pager.drag(
+          DragStartDetails(globalPosition: n.dragDetails!.globalPosition),
+          () => _pagerDrag = null,
+        );
+      }
       // A reversed card (opened at its end) counts its offset upwards.
-      final delta = n.metrics.axisDirection == AxisDirection.up
+      var delta = n.metrics.axisDirection == AxisDirection.up
           ? n.overscroll
           : -n.overscroll;
+      // Back on (or past) the page it left: stop there and release the card.
+      final off = pager.pixels - _handOverFrom;
+      final back = off != 0 && (off - delta).sign != off.sign;
+      if (back) delta = off;
       _pagerDrag!.update(
         DragUpdateDetails(
           globalPosition: n.dragDetails!.globalPosition,
@@ -207,11 +221,27 @@ class _StudyPageState extends State<StudyPage>
           primaryDelta: delta,
         ),
       );
+      if (back) _pagerDrag?.end(DragEndDetails(primaryVelocity: 0));
     } else if (n is ScrollEndNotification) {
       _pagerDrag?.end(n.dragDetails ?? DragEndDetails(primaryVelocity: 0));
     }
     return false;
   }
+
+  /// On lifting the finger, after the gesture recognizers ran (microtask):
+  /// - Ends a hand-over drag still alive: a card that flings back (the finger
+  ///   moved back before lifting) sends no ScrollEnd until its fling stops, so
+  ///   the pager stayed between two pages.
+  /// - Lets the cards take touches during the snap: it inherits the drag's
+  ///   "ignore touches" flag, so for its ~300 ms a swipe on the arriving card
+  ///   dragged the pager on instead, leaving both pages cut. A card that hands
+  ///   over at its edge still interrupts the snap.
+  void _releasePager(PointerEvent _) => scheduleMicrotask(() {
+    _pagerDrag?.end(DragEndDetails(primaryVelocity: 0));
+    if (_pageController.hasClients) {
+      _pageController.position.context.setIgnorePointer(false);
+    }
+  });
 
   void _expandSheet() => _sheet.animateTo(
     _expanded,
@@ -465,6 +495,9 @@ class _StudyPageState extends State<StudyPage>
         Widget card([bool reverse = false]) => QuestionCard(
           question: q,
           reverse: reverse,
+          physics: vertical
+              ? _HeldPhysics(() => _pagerDrag != null)
+              : const ClampingScrollPhysics(),
           optionState: (i) => !hidden && q.answers.contains(i)
               ? OptionState.correct
               : OptionState.neutral,
@@ -529,7 +562,11 @@ class _StudyPageState extends State<StudyPage>
         );
       },
     );
-    return pager;
+    return Listener(
+      onPointerUp: _releasePager,
+      onPointerCancel: _releasePager,
+      child: pager,
+    );
   });
 
   double get _pagerPosition =>
@@ -687,6 +724,23 @@ class _CardScrollState extends State<_CardScroll> {
   @override
   Widget build(BuildContext context) =>
       PageStorage(bucket: _bucket, child: widget.builder(_atEnd));
+}
+
+/// A card's scroll that stays put while [held]: the whole move comes out as
+/// overscroll, which the study page hands to the pager.
+class _HeldPhysics extends ClampingScrollPhysics {
+  final bool Function() held;
+
+  const _HeldPhysics(this.held, {super.parent});
+
+  @override
+  _HeldPhysics applyTo(ScrollPhysics? ancestor) =>
+      _HeldPhysics(held, parent: buildParent(ancestor));
+
+  @override
+  double applyBoundaryConditions(ScrollMetrics position, double value) => held()
+      ? value - position.pixels
+      : super.applyBoundaryConditions(position, value);
 }
 
 /// A quicker page snap. While the pager animates it keeps touches from the
