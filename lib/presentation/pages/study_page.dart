@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart' show Drag;
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -33,7 +34,24 @@ class _StudyPageState extends State<StudyPage>
   late final _saved = _progress.load('study', widget.evaluation);
   late final List<Question> _questions =
       _saved?.questions ?? _settings.prepare(widget.evaluation.questions);
-  late int _page = _saved?.index ?? 0;
+  final _learned = LearnedController.i;
+  late Set<int> _learnedIds = _learned.of(widget.evaluation.id);
+  // Learned questions are hidden unless "Mostrar aprendidas", or all of them
+  // are learned (nothing to show otherwise).
+  late bool _showLearned = _questions.every((q) => _learnedIds.contains(q.id));
+  bool _onlySaved = false;
+  // What the pager shows: a snapshot of [_questions] with the filters above.
+  // [_page] indexes this list.
+  // ponytail: snapshot, so (un)marking a question doesn't yank the current
+  // page; it applies when a filter changes or on the next session.
+  late List<Question> _shown = _filter(_showLearned, _onlySaved);
+  late int _page = _pageOf(_questions[_saved?.index ?? 0], _shown);
+  // Answers revealed in this session while "Ocultar respuestas" is on.
+  final _revealed = <int>{};
+  // While dragging the slider, progress is saved once on release.
+  bool _sliding = false;
+  // The pager's drag while a long card hands its overscroll over.
+  Drag? _pagerDrag;
   late final _pageController = PageController(initialPage: _page);
   final _bookmarks = BookmarksController.i;
   late Set<int> _bookmarked = _bookmarks.of(widget.evaluation.id);
@@ -44,7 +62,7 @@ class _StudyPageState extends State<StudyPage>
   // the handle and tabs.
   bool _sheetOpen = false;
   final _sheet = DraggableScrollableController();
-  late final _tabs = TabController(length: 2, vsync: this);
+  late final _tabs = TabController(length: 3, vsync: this);
   final _saveHistory = Get.find<SaveHistoryEntry>();
   // Study time; paused while the app is in the background.
   final _clock = Stopwatch()..start();
@@ -83,6 +101,21 @@ class _StudyPageState extends State<StudyPage>
     () => _bookmarked = _bookmarks.toggle(widget.evaluation.id, questionId),
   );
 
+  void _toggleLearned(int questionId) {
+    setState(
+      () => _learnedIds = _learned.toggle(widget.evaluation.id, questionId),
+    );
+    if (_learnedIds.contains(questionId) && !_showLearned) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        // Short: it covers the sheet's tabs while shown.
+        const SnackBar(
+          duration: Duration(seconds: 2),
+          content: Text('Aprendida: no se mostrará en la próxima sesión'),
+        ),
+      );
+    }
+  }
+
   void _goTo(int index) {
     _setPage(index);
     _pageController.jumpToPage(index);
@@ -91,31 +124,88 @@ class _StudyPageState extends State<StudyPage>
   /// Also saves where the session is, to resume it next time.
   void _setPage(int index) {
     setState(() => _page = index);
-    _progress.save('study', widget.evaluation, _questions, index);
+    if (!_sliding) _saveProgress();
+  }
+
+  void _saveProgress() => _progress.save(
+    'study',
+    widget.evaluation,
+    _questions,
+    _questions.indexOf(_shown[_page]),
+  );
+
+  List<Question> _filter(bool showLearned, bool onlySaved) => [
+    for (final q in _questions)
+      if ((showLearned || !_learnedIds.contains(q.id)) &&
+          (!onlySaved || _bookmarked.contains(q.id)))
+        q,
+  ];
+
+  /// Page of [current] in [shown], or of the next question after it that is
+  /// shown (it may be filtered out).
+  // ponytail: O(n²) scan, fine for banks of a few hundred questions.
+  int _pageOf(Question current, List<Question> shown) {
+    for (var i = _questions.indexOf(current); i < _questions.length; i++) {
+      final page = shown.indexOf(_questions[i]);
+      if (page >= 0) return page;
+    }
+    return 0;
+  }
+
+  /// Applies the filters; ignored when nothing would be left to show.
+  void _refilter({bool? showLearned, bool? onlySaved}) {
+    showLearned ??= _showLearned;
+    onlySaved ??= _onlySaved;
+    final shown = _filter(showLearned, onlySaved);
+    if (shown.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No quedarían preguntas para mostrar')),
+      );
+      return;
+    }
+    final index = _pageOf(_shown[_page], shown);
+    setState(() {
+      _showLearned = showLearned!;
+      _onlySaved = onlySaved!;
+      _shown = shown;
+      _page = index;
+    });
+    // After the pager rebuilds with the new item count.
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _pageController.jumpToPage(index),
+    );
+  }
+
+  Future<void> _search() async {
+    final index = await showSearch(
+      context: context,
+      delegate: _QuestionSearch(_shown),
+    );
+    if (index != null && mounted) _goTo(index);
   }
 
   /// TikTok-style paging for long cards: once the card's own scroll hits an
-  /// edge, the rest of the drag moves the pager, then it snaps on release.
-  bool _handOver(ScrollNotification n, int index) {
-    final pager = _pageController.position;
+  /// edge, the rest of the drag drives a drag on the pager, so it stays put
+  /// while the finger holds still and, on release, snaps like a normal swipe
+  /// (page physics: distance and fling velocity).
+  // Not jumpTo: it ends with a ballistic snap, so the page sprang back on its
+  // own while the finger was still down.
+  bool _handOver(ScrollNotification n) {
     if (n is OverscrollNotification && n.dragDetails != null) {
-      pager.jumpTo(
-        (pager.pixels + n.overscroll).clamp(
-          pager.minScrollExtent,
-          pager.maxScrollExtent,
+      _pagerDrag ??= _pageController.position.drag(
+        DragStartDetails(globalPosition: n.dragDetails!.globalPosition),
+        () => _pagerDrag = null,
+      );
+      final delta = -n.overscroll;
+      _pagerDrag!.update(
+        DragUpdateDetails(
+          globalPosition: n.dragDetails!.globalPosition,
+          delta: Offset(0, delta),
+          primaryDelta: delta,
         ),
       );
     } else if (n is ScrollEndNotification) {
-      final delta = _pageController.page! - index;
-      // ponytail: fixed 20% threshold, add a fling-velocity rule if short
-      // flicks feel sticky.
-      if (delta != 0) {
-        _pageController.animateToPage(
-          delta.abs() > 0.2 ? index + delta.sign.toInt() : index,
-          duration: const Duration(milliseconds: 250),
-          curve: Curves.easeOut,
-        );
-      }
+      _pagerDrag?.end(n.dragDetails ?? DragEndDetails(primaryVelocity: 0));
     }
     return false;
   }
@@ -132,30 +222,36 @@ class _StudyPageState extends State<StudyPage>
     curve: Curves.easeOut,
   );
 
-  /// Bookmarks in session order, so they match the slider and the counter.
-  List<Widget> _bookmarkTiles(double minSize) {
-    final saved = [
-      for (var i = 0; i < _questions.length; i++)
-        if (_bookmarked.contains(_questions[i].id)) i,
+  /// Questions in [ids], in session order, so they match the slider and the
+  /// counter. Tap to jump; [removable] adds a trailing "Quitar" bookmark.
+  List<Widget> _questionTiles(
+    Set<int> ids,
+    String empty,
+    double minSize, {
+    bool removable = false,
+  }) {
+    final pages = [
+      for (var i = 0; i < _shown.length; i++)
+        if (ids.contains(_shown[i].id)) i,
     ];
-    if (saved.isEmpty) {
-      return const [ListTile(title: Text('Sin preguntas guardadas'))];
-    }
+    if (pages.isEmpty) return [ListTile(title: Text(empty))];
     return [
-      for (final i in saved)
+      for (final i in pages)
         ListTile(
           leading: Text('${i + 1}'),
           title: Text(
-            _questions[i].question,
+            _shown[i].question,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),
           selected: i == _page,
-          trailing: IconButton(
-            tooltip: 'Quitar',
-            icon: const Icon(Icons.bookmark_remove),
-            onPressed: () => _toggleBookmark(_questions[i].id),
-          ),
+          trailing: removable
+              ? IconButton(
+                  tooltip: 'Quitar',
+                  icon: const Icon(Icons.bookmark_remove),
+                  onPressed: () => _toggleBookmark(_shown[i].id),
+                )
+              : null,
           onTap: () {
             _goTo(i);
             _collapseSheet(minSize);
@@ -211,6 +307,7 @@ class _StudyPageState extends State<StudyPage>
                             ? 'Guardadas'
                             : 'Guardadas (${_bookmarked.length})',
                       ),
+                      const Tab(text: 'Resaltadas'),
                     ],
                   ),
                 ],
@@ -219,11 +316,45 @@ class _StudyPageState extends State<StudyPage>
             if (!_sheetOpen)
               const SliverToBoxAdapter()
             else if (_tabs.index == 0)
-              const SliverToBoxAdapter(
-                child: ReadingSettingsPanel(showRevealAtEnd: false),
+              SliverList.list(
+                children: [
+                  SwitchListTile(
+                    secondary: const Icon(Icons.school_outlined),
+                    title: const Text('Mostrar aprendidas'),
+                    subtitle: Text('${_learnedIds.length} aprendidas'),
+                    value: _showLearned,
+                    onChanged: (v) => _refilter(showLearned: v),
+                  ),
+                  const ReadingSettingsPanel(showRevealAtEnd: false),
+                ],
+              )
+            else if (_tabs.index == 1)
+              SliverList.list(
+                children: [
+                  SwitchListTile(
+                    secondary: const Icon(Icons.filter_list),
+                    title: const Text('Estudiar solo guardadas'),
+                    value: _onlySaved,
+                    onChanged: _onlySaved || _bookmarked.isNotEmpty
+                        ? (v) => _refilter(onlySaved: v)
+                        : null,
+                  ),
+                  ..._questionTiles(
+                    _bookmarked,
+                    'Sin preguntas guardadas',
+                    minSize,
+                    removable: true,
+                  ),
+                ],
               )
             else
-              SliverList.list(children: _bookmarkTiles(minSize)),
+              SliverList.list(
+                children: _questionTiles(
+                  _highlights.questionIds(widget.evaluation.id),
+                  'Sin preguntas resaltadas',
+                  minSize,
+                ),
+              ),
             // Room for the gesture bar.
             SliverToBoxAdapter(
               child: SizedBox(height: MediaQuery.paddingOf(context).bottom),
@@ -244,13 +375,18 @@ class _StudyPageState extends State<StudyPage>
 
   @override
   Widget build(BuildContext context) {
-    final current = _questions[_page];
+    final current = _shown[_page];
     return ConfirmExit(
       message: '¿Quieres salir del modo estudio?',
       child: Scaffold(
         appBar: AppBar(
-          title: Text('${_page + 1}/${_questions.length}'),
+          title: Text('${_page + 1}/${_shown.length}'),
           actions: [
+            IconButton(
+              tooltip: 'Buscar',
+              onPressed: _search,
+              icon: const Icon(Icons.search),
+            ),
             IconButton(
               tooltip: _marker ? 'Dejar de resaltar' : 'Resaltar texto',
               isSelected: _marker,
@@ -258,6 +394,18 @@ class _StudyPageState extends State<StudyPage>
               icon: const Icon(Icons.border_color_outlined),
               selectedIcon: const Icon(Icons.border_color),
             ),
+            if (_learnedIds.contains(current.id))
+              IconButton(
+                tooltip: 'Quitar de aprendidas',
+                onPressed: () => _toggleLearned(current.id),
+                icon: const Icon(Icons.school),
+              )
+            else
+              IconButton(
+                tooltip: 'Marcar como aprendida',
+                onPressed: () => _toggleLearned(current.id),
+                icon: const Icon(Icons.school_outlined),
+              ),
             if (_bookmarked.contains(current.id))
               IconButton(
                 tooltip: 'Quitar de guardadas',
@@ -297,18 +445,33 @@ class _StudyPageState extends State<StudyPage>
     final textScale = _settings.textScale.value;
     final justify = _settings.justify.value;
     final vertical = _settings.axis == Axis.vertical;
+    final hideAnswers = _settings.hideAnswers.value;
     final pager = PageView.builder(
       controller: _pageController,
       scrollDirection: _settings.axis,
-      itemCount: _questions.length,
+      itemCount: _shown.length,
       onPageChanged: _setPage,
       itemBuilder: (context, index) {
-        final q = _questions[index];
+        final q = _shown[index];
+        final hidden = hideAnswers && !_revealed.contains(q.id);
+        void reveal() => setState(() => _revealed.add(q.id));
         final card = QuestionCard(
           question: q,
-          optionState: (i) =>
-              q.answers.contains(i) ? OptionState.correct : OptionState.neutral,
-          showExplanation: true,
+          optionState: (i) => !hidden && q.answers.contains(i)
+              ? OptionState.correct
+              : OptionState.neutral,
+          showExplanation: !hidden,
+          onTap: hidden ? (_) => reveal() : null,
+          footer: hidden
+              ? Padding(
+                  padding: const EdgeInsets.only(top: 12),
+                  child: FilledButton.tonalIcon(
+                    onPressed: reveal,
+                    icon: const Icon(Icons.visibility),
+                    label: const Text('Mostrar respuesta'),
+                  ),
+                )
+              : null,
           textScale: textScale,
           justify: justify,
           textBuilder: (field, text, style) => HighlightableText(
@@ -330,25 +493,158 @@ class _StudyPageState extends State<StudyPage>
         );
         // Horizontal paging doesn't fight the card's vertical scroll.
         if (!vertical) return card;
-        return NotificationListener<ScrollNotification>(
-          onNotification: (n) => _handOver(n, index),
-          child: card,
+        return Stack(
+          clipBehavior: Clip.none,
+          children: [
+            // Blank space at the bottom of every page; the zigzag of the next
+            // one sits in the middle of it.
+            Padding(
+              padding: const EdgeInsets.only(bottom: _Zigzag.gap),
+              child: NotificationListener<ScrollNotification>(
+                onNotification: _handOver,
+                child: card,
+              ),
+            ),
+            // Above the page, centered in the previous page's bottom space, so
+            // both questions get the same room around it. Seen only while
+            // swiping: the pager clips it once the page settles.
+            if (index > 0)
+              const Positioned(
+                top: -(_Zigzag.gap + _Zigzag.height) / 2,
+                left: 0,
+                right: 0,
+                child: _Zigzag(),
+              ),
+          ],
         );
       },
     );
     return Column(
       children: [
         // Quick jump between questions.
-        if (_settings.showSlider.value && _questions.length > 1)
+        if (_settings.showSlider.value && _shown.length > 1)
           Slider(
             value: _page.toDouble(),
-            max: _questions.length - 1.0,
-            divisions: _questions.length - 1,
+            max: _shown.length - 1.0,
+            divisions: _shown.length - 1,
             label: '${_page + 1}',
+            onChangeStart: (_) => _sliding = true,
             onChanged: (v) => _goTo(v.round()),
+            onChangeEnd: (_) {
+              _sliding = false;
+              _saveProgress();
+            },
           ),
         Expanded(child: pager),
       ],
     );
   });
+}
+
+/// Finds a question by its text or options; returns its page.
+class _QuestionSearch extends SearchDelegate<int?> {
+  final List<Question> questions;
+
+  _QuestionSearch(this.questions) : super(searchFieldLabel: 'Buscar pregunta');
+
+  /// Lowercase without accents, so "celula" finds "Célula".
+  static String _fold(String s) => s.toLowerCase().replaceAllMapped(
+    RegExp('[áéíóúü]'),
+    (m) => 'aeiouu'['áéíóúü'.indexOf(m[0]!)],
+  );
+
+  @override
+  Widget buildLeading(BuildContext context) =>
+      BackButton(onPressed: () => close(context, null));
+
+  @override
+  List<Widget> buildActions(BuildContext context) => [
+    if (query.isNotEmpty)
+      IconButton(
+        tooltip: 'Borrar',
+        onPressed: () => query = '',
+        icon: const Icon(Icons.clear),
+      ),
+  ];
+
+  @override
+  Widget buildResults(BuildContext context) => buildSuggestions(context);
+
+  @override
+  Widget buildSuggestions(BuildContext context) {
+    final text = _fold(query.trim());
+    final pages = [
+      for (var i = 0; i < questions.length; i++)
+        if ([
+          questions[i].question,
+          ...questions[i].options,
+        ].any((s) => _fold(s).contains(text)))
+          i,
+    ];
+    if (pages.isEmpty) {
+      return const ListTile(title: Text('Sin resultados'));
+    }
+    return ListView(
+      children: [
+        for (final i in pages)
+          ListTile(
+            leading: Text('${i + 1}'),
+            title: Text(
+              questions[i].question,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            onTap: () => close(context, i),
+          ),
+      ],
+    );
+  }
+}
+
+/// A zigzag line across the page, between questions in vertical paging.
+class _Zigzag extends StatelessWidget {
+  static const height = 10.0;
+
+  /// Space at the bottom of each page that holds the next page's zigzag.
+  static const gap = 40.0;
+
+  const _Zigzag();
+
+  @override
+  Widget build(BuildContext context) => CustomPaint(
+    size: const Size(double.infinity, height),
+    painter: _ZigzagPainter(Theme.of(context).colorScheme.outlineVariant),
+  );
+}
+
+class _ZigzagPainter extends CustomPainter {
+  final Color color;
+
+  _ZigzagPainter(this.color);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const step = 10.0;
+    const stroke = 2.0;
+    // Inset by the stroke, so no tip spills out of the box into the page.
+    const top = stroke;
+    final bottom = size.height - stroke;
+    final path = Path()..moveTo(0, bottom);
+    for (var x = 0.0; x < size.width; x += step) {
+      path
+        ..lineTo(x + step / 2, top)
+        ..lineTo(x + step, bottom);
+    }
+    canvas.drawPath(
+      path,
+      Paint()
+        ..color = color
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = stroke
+        ..strokeJoin = StrokeJoin.round,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_ZigzagPainter old) => old.color != color;
 }

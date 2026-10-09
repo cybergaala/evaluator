@@ -26,6 +26,7 @@ Future<ReadingSettingsController> setUpControllers() async {
   SharedPreferences.setMockInitialValues({});
   final prefs = await SharedPreferences.getInstance();
   Get.put(BookmarksController(prefs));
+  Get.put(LearnedController(prefs));
   Get.put(HighlightsController(prefs));
   Get.put(ProgressController(prefs));
   Get.put(SaveHistoryEntry(FakeHistory()));
@@ -47,6 +48,14 @@ void main() {
     await tester.drag(find.text('Q1'), const Offset(0, -500));
     await tester.pumpAndSettle();
     expect(find.text('2/3'), findsOneWidget);
+    // The zigzag above Q2 sits outside the pager once the page settles.
+    final zigzag = find.byWidgetPredicate(
+      (w) => w.runtimeType.toString() == '_Zigzag',
+    );
+    expect(
+      tester.getRect(zigzag.first).bottom,
+      lessThanOrEqualTo(tester.getRect(find.byType(PageView)).top),
+    );
 
     // Horizontal.
     settings.vertical.value = false;
@@ -76,8 +85,26 @@ void main() {
     );
     await tester.pumpWidget(MaterialApp(home: StudyPage(evaluation: long)));
 
-    // One drag: first scrolls the card to its end, the rest moves the pager.
-    await tester.drag(find.byType(ListView).first, const Offset(0, -20000));
+    // Drag the card to its end and a bit past it, then hold still: the
+    // pager keeps its offset instead of springing back.
+    final pager = tester.widget<PageView>(find.byType(PageView)).controller!;
+    final gesture = await tester.startGesture(
+      tester.getCenter(find.byType(ListView).first),
+    );
+    for (var i = 0; i < 40; i++) {
+      await gesture.moveBy(const Offset(0, -500));
+      await tester.pump();
+    }
+    await gesture.moveBy(const Offset(0, -100));
+    await tester.pump();
+    final held = pager.page!;
+    expect(held, greaterThan(0));
+    await tester.pump(const Duration(seconds: 1));
+    expect(pager.page, held);
+
+    // Release past the middle: it snaps to the next question.
+    await gesture.moveBy(const Offset(0, -400));
+    await gesture.up();
     await tester.pumpAndSettle();
     expect(find.text('2/2'), findsOneWidget);
   });
@@ -147,5 +174,76 @@ void main() {
     await tester.tap(find.byTooltip('Borrar resaltado'));
     await tester.pumpAndSettle();
     expect(HighlightsController.i.of('e', 1, 'q'), isEmpty);
+  });
+
+  testWidgets('hide answers, search, only bookmarked and highlighted list', (
+    tester,
+  ) async {
+    final settings = await setUpControllers();
+    addTearDown(Get.reset);
+    settings.hideAnswers.value = true;
+    BookmarksController.i.toggle('e', 2);
+    HighlightsController.i.paint('e', 3, 'q', 0, 1, 0);
+    await tester.pumpWidget(
+      GetMaterialApp(home: StudyPage(evaluation: evaluation)),
+    );
+
+    // Hidden until "Mostrar respuesta".
+    expect(find.text('Mostrar respuesta'), findsOneWidget);
+    await tester.tap(find.text('Mostrar respuesta'));
+    await tester.pumpAndSettle();
+    expect(find.text('Mostrar respuesta'), findsNothing);
+
+    // Search by text.
+    await tester.tap(find.byTooltip('Buscar'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'q3');
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Q3').last);
+    await tester.pumpAndSettle();
+    expect(find.text('3/3'), findsOneWidget);
+
+    // Highlighted list shows Q3.
+    await tester.tap(find.text('Resaltadas'));
+    await tester.pumpAndSettle();
+    expect(find.text('Q3'), findsNWidgets(2));
+
+    // Only bookmarked: one page, the bookmarked Q2.
+    await tester.tap(find.textContaining('Guardadas ('));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Estudiar solo guardadas'));
+    await tester.pumpAndSettle();
+    expect(find.text('1/1'), findsOneWidget);
+    expect(find.text('Q2'), findsNWidgets(2));
+  });
+
+  testWidgets('learned questions are hidden by default', (tester) async {
+    await setUpControllers();
+    addTearDown(Get.reset);
+    LearnedController.i.toggle('e', 1);
+    await tester.pumpWidget(
+      GetMaterialApp(home: StudyPage(evaluation: evaluation)),
+    );
+
+    // Q1 is learned: the session starts at Q2, out of 2.
+    expect(find.text('1/2'), findsOneWidget);
+    expect(find.text('Q2'), findsOneWidget);
+
+    // Mark Q2 from the AppBar; it stays until the next session.
+    await tester.tap(find.byTooltip('Marcar como aprendida'));
+    await tester.pumpAndSettle();
+    expect(LearnedController.i.of('e'), {1, 2});
+    expect(find.text('1/2'), findsOneWidget);
+    // The SnackBar covers the sheet's tabs.
+    ScaffoldMessenger.of(tester.element(find.text('Q2')))
+        .removeCurrentSnackBar();
+    await tester.pumpAndSettle();
+
+    // "Mostrar aprendidas" brings them back, keeping Q2 on screen.
+    await tester.tap(find.text('Ajustes'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Mostrar aprendidas'));
+    await tester.pumpAndSettle();
+    expect(find.text('2/3'), findsOneWidget);
   });
 }

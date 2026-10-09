@@ -187,4 +187,27 @@ void main() {
     await tester.pumpAndSettle();
     expect(ProgressController.i.load('exam', evaluation), isNull);
   });
+
+  testWidgets('only asks the given questions', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    Get.put(ReadingSettingsController(await SharedPreferences.getInstance()));
+    Get.put(SaveHistoryEntry(FakeHistory()));
+    Get.put(ProgressController(await SharedPreferences.getInstance()));
+    addTearDown(Get.reset);
+    final evaluation = Evaluation(
+      id: 'e',
+      title: 'E',
+      questions: [
+        for (var i = 1; i <= 3; i++)
+          Question(id: i, question: 'Q$i', options: ['a', 'b'], answers: [0]),
+      ],
+    );
+    await tester.pumpWidget(
+      GetMaterialApp(
+        home: ExamPage(evaluation: evaluation, only: const {2}),
+      ),
+    );
+    expect(find.text('1/1 · 0 correctas'), findsOneWidget);
+    expect(find.text('Q2'), findsOneWidget);
+  });
 }

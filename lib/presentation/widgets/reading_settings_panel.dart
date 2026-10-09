@@ -95,6 +95,15 @@ class ReadingSettingsPanel extends StatelessWidget {
               onChanged: (v) => s.shuffleOptions.value = v,
             ),
             SwitchListTile(
+              secondary: const Icon(Icons.quiz_outlined),
+              title: const Text('Ocultar respuestas'),
+              subtitle: const Text(
+                'En modo estudio, hasta tocar una opción o Mostrar respuesta',
+              ),
+              value: s.hideAnswers.value,
+              onChanged: (v) => s.hideAnswers.value = v,
+            ),
+            SwitchListTile(
               secondary: const Icon(Icons.linear_scale),
               title: const Text('Barra de preguntas'),
               subtitle: const Text(
