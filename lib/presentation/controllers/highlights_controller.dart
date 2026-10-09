@@ -27,6 +27,13 @@ class HighlightsController extends GetxController {
       (r[0] as int, r[1] as int, r[2] as int),
   ];
 
+  /// Ids of the questions with at least one highlight.
+  Set<int> questionIds(String evaluationId) => {
+    for (final MapEntry(:key, :value) in _all(evaluationId).entries)
+      if ((value as Map).values.any((r) => (r as List).isNotEmpty))
+        int.parse(key),
+  };
+
   /// Paints `[start, end)` with [color], or erases it when [color] is null.
   void paint(
     String evaluationId,

@@ -39,7 +39,7 @@ class SettingsPage extends StatelessWidget {
                 leading: const Icon(Icons.storage),
                 title: const Text('Memoria'),
                 subtitle: const Text(
-                  'Resaltados, preguntas guardadas e historial',
+                  'Resaltados, guardadas, aprendidas e historial',
                 ),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => Get.to(() => const _MemorySettingsPage()),
@@ -126,6 +126,16 @@ class _MemorySettingsPage extends StatelessWidget {
               context,
               'las preguntas guardadas',
               BookmarksController.i.clearAll,
+            ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.school_outlined),
+            title: const Text('Borrar preguntas aprendidas'),
+            subtitle: const Text('Vuelven a mostrarse en el modo estudio'),
+            onTap: () => _clear(
+              context,
+              'las preguntas aprendidas',
+              LearnedController.i.clearAll,
             ),
           ),
           ListTile(

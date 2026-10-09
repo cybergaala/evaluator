@@ -20,6 +20,7 @@ void main() {
     });
     final prefs = await SharedPreferences.getInstance();
     Get.put(BookmarksController(prefs));
+    Get.put(LearnedController(prefs));
     Get.put(HighlightsController(prefs));
     final history = FakeHistory()
       ..entries.add(Attempt('a', 'A', DateTime(2026), 1, 2));

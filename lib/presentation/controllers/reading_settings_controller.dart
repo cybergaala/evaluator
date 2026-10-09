@@ -20,6 +20,7 @@ class ReadingSettingsController extends GetxController {
   late final shuffleOptions = _bool('reading_shuffle_options', false);
   late final revealAtEnd = _bool('reading_reveal_at_end', false);
   late final showSlider = _bool('reading_show_slider', true);
+  late final hideAnswers = _bool('reading_hide_answers', false);
 
   ReadingSettingsController(this._prefs);
 

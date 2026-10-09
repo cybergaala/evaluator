@@ -40,6 +40,7 @@ Future<void> initDependencies() async {
   Get.put(ThemeController(prefs));
   Get.put(ReadingSettingsController(prefs));
   Get.put(BookmarksController(prefs));
+  Get.put(LearnedController(prefs));
   Get.put(HighlightsController(prefs));
   Get.put(ProgressController(prefs));
 }
