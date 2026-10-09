@@ -2,6 +2,7 @@ import 'dart:async' show scheduleMicrotask;
 
 import 'package:flutter/gestures.dart' show Drag;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 
 import '../../domain/entities/evaluation.dart';
@@ -617,7 +618,12 @@ class _StudyPageState extends State<StudyPage>
                           divisions: _shown.length - 1,
                           label: '${_page + 1}',
                           onChangeStart: (_) => _sliding = true,
-                          onChanged: (v) => _goTo(v.round()),
+                          onChanged: (v) {
+                            // One tick per question jumped, not per drag event.
+                            if (v.round() == _page) return;
+                            HapticFeedback.selectionClick();
+                            _goTo(v.round());
+                          },
                           onChangeEnd: (_) {
                             _sliding = false;
                             _saveProgress();
