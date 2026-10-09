@@ -9,16 +9,38 @@ class ThemeModel {
   final ThemeMode? mode;
   final IconData? icon;
 
-  const ThemeModel({required this.name, this.color, this.mode, this.icon});
+  /// Dark mode with pure black surfaces.
+  final bool amoled;
+
+  const ThemeModel({
+    required this.name,
+    this.color,
+    this.mode,
+    this.icon,
+    this.amoled = false,
+  });
 
   static ThemeData generateTheme({
     required Brightness brightness,
     required Color colorSchemeSeed,
+    bool amoled = false,
   }) {
-    return ThemeData(
+    if (!amoled) {
+      return ThemeData(
+        brightness: brightness,
+        useMaterial3: true,
+        colorSchemeSeed: colorSchemeSeed,
+      );
+    }
+    // Containers (cards, sheets, nav bar) keep their tones for contrast.
+    final scheme = ColorScheme.fromSeed(
+      seedColor: colorSchemeSeed,
       brightness: brightness,
+    ).copyWith(surface: Colors.black, surfaceDim: Colors.black);
+    return ThemeData(
       useMaterial3: true,
-      colorSchemeSeed: colorSchemeSeed,
+      colorScheme: scheme,
+      scaffoldBackgroundColor: Colors.black,
     );
   }
 
@@ -37,6 +59,12 @@ class ThemeModel {
       name: 'Oscuro',
       mode: ThemeMode.dark,
       icon: Icons.dark_mode,
+    ),
+    const ThemeModel(
+      name: 'AMOLED',
+      mode: ThemeMode.dark,
+      icon: Icons.contrast,
+      amoled: true,
     ),
     const ThemeModel(name: 'Azul', color: Colors.blue),
     const ThemeModel(name: 'Rojo', color: Colors.red),
@@ -59,9 +87,11 @@ class ThemeController extends GetxController {
 
   static const _modeKey = 'theme_mode';
   static const _colorKey = 'theme_color';
+  static const _amoledKey = 'theme_amoled';
 
   final SharedPreferences _prefs;
   final mode = ThemeMode.system.obs;
+  final amoled = false.obs;
   final seedColor = Rx<Color>(Colors.green);
 
   ThemeController(this._prefs) {
@@ -69,6 +99,7 @@ class ThemeController extends GetxController {
     if (modeIndex != null && modeIndex < ThemeMode.values.length) {
       mode.value = ThemeMode.values[modeIndex];
     }
+    amoled.value = _prefs.getBool(_amoledKey) ?? false;
     // Look the color up in [ThemeModel.themes]: a plain Color(argb) never
     // equals a MaterialColor, which would break [isSelected].
     final argb = _prefs.getInt(_colorKey);
@@ -83,7 +114,9 @@ class ThemeController extends GetxController {
   void apply(ThemeModel model) {
     if (model.mode != null) {
       mode.value = model.mode!;
+      amoled.value = model.amoled;
       _prefs.setInt(_modeKey, model.mode!.index);
+      _prefs.setBool(_amoledKey, model.amoled);
     } else if (model.color != null) {
       seedColor.value = model.color!;
       _prefs.setInt(_colorKey, model.color!.toARGB32());
@@ -91,5 +124,6 @@ class ThemeController extends GetxController {
   }
 
   bool isSelected(ThemeModel model) =>
-      model.mode == mode.value || model.color == seedColor.value;
+      (model.mode == mode.value && model.amoled == amoled.value) ||
+      model.color == seedColor.value;
 }

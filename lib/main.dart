@@ -32,6 +32,7 @@ class App extends StatelessWidget {
         darkTheme: ThemeModel.generateTheme(
           brightness: Brightness.dark,
           colorSchemeSeed: theme.seedColor.value,
+          amoled: theme.amoled.value,
         ),
         home: const HomePage(),
         // A region at the bottom of every route: Flutter takes the gesture bar
