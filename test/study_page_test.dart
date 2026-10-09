@@ -89,7 +89,7 @@ void main() {
     // pager keeps its offset instead of springing back.
     final pager = tester.widget<PageView>(find.byType(PageView)).controller!;
     final gesture = await tester.startGesture(
-      tester.getCenter(find.byType(ListView).first),
+      tester.getCenter(find.byType(SingleChildScrollView).first),
     );
     for (var i = 0; i < 40; i++) {
       await gesture.moveBy(const Offset(0, -500));
@@ -107,6 +107,56 @@ void main() {
     await gesture.up();
     await tester.pumpAndSettle();
     expect(find.text('2/2'), findsOneWidget);
+
+    // Back up: card 2 hands over at its start, and card 1 comes back opened
+    // at its end (reversed scroll), so the drag keeps paging back.
+    final back = await tester.startGesture(
+      tester.getCenter(find.byType(SingleChildScrollView).last),
+    );
+    for (var i = 0; i < 4; i++) {
+      await back.moveBy(const Offset(0, 300));
+      await tester.pump();
+    }
+    await back.up();
+    await tester.pumpAndSettle();
+    expect(find.text('1/2'), findsOneWidget);
+    final card1 = tester.widget<SingleChildScrollView>(
+      find.byType(SingleChildScrollView).first,
+    );
+    expect(card1.reverse, isTrue);
+  });
+
+  testWidgets('a swipe right after a page snaps scrolls the new card', (
+    tester,
+  ) async {
+    await setUpControllers();
+    addTearDown(Get.reset);
+    final ev = Evaluation(
+      id: 's',
+      title: 'S',
+      questions: [
+        Question(id: 1, question: 'Q1', options: ['a', 'b'], answers: [0]),
+        Question(
+          id: 2,
+          question: 'Q2 ${'long text ' * 300}',
+          options: ['a', 'b'],
+          answers: [0],
+        ),
+        Question(id: 3, question: 'Q3', options: ['a', 'b'], answers: [0]),
+      ],
+    );
+    await tester.pumpWidget(MaterialApp(home: StudyPage(evaluation: ev)));
+    final pager = tester.widget<PageView>(find.byType(PageView)).controller!;
+
+    await tester.fling(find.text('Q1'), const Offset(0, -300), 2000);
+    // Looks settled, but the default spring was still crawling here, and
+    // while it animates the pager keeps touches from the cards.
+    await tester.pump(); // starts the snap animation's clock
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.drag(find.byType(PageView), const Offset(0, -300));
+    await tester.pump();
+    expect(pager.page, 1);
+    await tester.pumpAndSettle();
   });
 
   testWidgets('slider jumps and bookmarks persist', (tester) async {
