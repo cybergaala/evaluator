@@ -18,6 +18,13 @@ class QuestionCard extends StatelessWidget {
   /// Extra blank space after the content (study mode's zigzag gap).
   final double bottomSpace;
 
+  /// Anchors the scroll at the end of the content: offset 0 shows the last
+  /// lines (study mode, a page entering from above).
+  final bool reverse;
+
+  /// The scroll physics; must stay clamping (see [build]).
+  final ScrollPhysics physics;
+
   /// Builds each text (`field`: `q` question, `o<i>` option, `e`
   /// explanation). Defaults to plain [Text]; study mode passes a highlighter.
   final Widget Function(String field, String text, TextStyle? style)?
@@ -33,6 +40,8 @@ class QuestionCard extends StatelessWidget {
     this.textScale = 1,
     this.justify = false,
     this.bottomSpace = 0,
+    this.reverse = false,
+    this.physics = const ClampingScrollPhysics(),
     this.textBuilder,
   });
 
@@ -59,60 +68,66 @@ class QuestionCard extends StatelessWidget {
       // option boxes on a fast fling.
       child: ScrollConfiguration(
         behavior: ScrollConfiguration.of(context).copyWith(overscroll: false),
-        child: ListView(
+        // Not a lazy ListView: a handful of children, and the extent is exact
+        // from the first layout.
+        child: SingleChildScrollView(
           // Saves the offset in the route's PageStorage, so a card scrolled
           // away and back (pager disposes it) reopens where it was left.
           key: PageStorageKey('question-${question.id}'),
           // Not primary: only grabs drags when the content overflows, so the
           // study PageView can swipe between cards.
           primary: false,
+          reverse: reverse,
           // Clamping on every platform, so reaching an edge emits
           // OverscrollNotification (study page hands it to the pager).
-          physics: const ClampingScrollPhysics(),
+          physics: physics,
           // Left clears the option letters, which stick out of the tiles.
           padding: EdgeInsets.fromLTRB(24, 20, 24, 20 + bottomSpace),
-          children: [
-            _text('q', question.question, theme.textTheme.bodyLarge),
-            if (question.isMultiAnswer)
-              Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Text(
-                  'Selecciona ${question.answers.length} respuestas',
-                  style: theme.textTheme.labelMedium,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _text('q', question.question, theme.textTheme.bodyLarge),
+              if (question.isMultiAnswer)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(
+                    'Selecciona ${question.answers.length} respuestas',
+                    style: theme.textTheme.labelMedium,
+                  ),
                 ),
-              ),
-            const SizedBox(height: 20),
-            for (var i = 0; i < question.options.length; i++)
-              _option(context, i, scheme),
-            if (showExplanation && question.explanation != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 40),
-                // A big faded opening quote behind the start of the text.
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    Positioned(
-                      left: -4,
-                      top: -20,
-                      child: Text(
-                        '\u201C',
-                        style: TextStyle(
-                          fontSize: 120,
-                          height: 1,
-                          color: scheme.primary.withValues(alpha: 0.3),
+              const SizedBox(height: 20),
+              for (var i = 0; i < question.options.length; i++)
+                _option(context, i, scheme),
+              if (showExplanation && question.explanation != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 40),
+                  // A big faded opening quote behind the start of the text.
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Positioned(
+                        left: -4,
+                        top: -20,
+                        child: Text(
+                          '\u201C',
+                          style: TextStyle(
+                            fontSize: 120,
+                            height: 1,
+                            color: scheme.primary.withValues(alpha: 0.3),
+                          ),
                         ),
                       ),
-                    ),
-                    _text(
-                      'e',
-                      question.explanation!,
-                      theme.textTheme.bodyMedium,
-                    ),
-                  ],
+                      _text(
+                        'e',
+                        question.explanation!,
+                        theme.textTheme.bodyMedium,
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ?footer,
-          ],
+              ?footer,
+            ],
+          ),
         ),
       ),
     );
