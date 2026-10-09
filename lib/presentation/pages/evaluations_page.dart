@@ -155,59 +155,149 @@ class _EvaluationsPageState extends State<EvaluationsPage>
                 final study = ProgressController.i.load('study', e);
                 final exam = ProgressController.i.load('exam', e);
                 final learned = _learned(e).length;
-                return Card(
-                  margin: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 6,
-                  ),
-                  clipBehavior: Clip.antiAlias,
-                  child: Column(
-                    children: [
-                      ListTile(
-                        leading: const Icon(Icons.description),
-                        title: Text(e.title),
-                        subtitle: Text(
-                          [
-                            '${e.questions.length} preguntas',
-                            if (learned > 0) 'aprendidas: $learned',
-                            if (last != null) 'último: ${last.percent}%',
-                            if (study != null)
-                              'estudio: ${study.index + 1}/${study.questions.length}',
-                            if (exam != null)
-                              'evaluación: ${exam.index + 1}/${exam.questions.length}',
-                          ].join(' · '),
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: FilledButton.tonalIcon(
-                                icon: const Icon(Icons.menu_book),
-                                label: const Text('Estudiar'),
-                                onPressed: () => _start('study', e),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: FilledButton.icon(
-                                icon: const Icon(Icons.assignment),
-                                label: const Text('Evaluar'),
-                                onPressed: () => _start('exam', e),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                    ],
-                  ),
+                return _EvaluationCard(
+                  evaluation: e,
+                  learned: learned,
+                  lastPercent: last?.percent,
+                  study: study == null
+                      ? null
+                      : '${study.index + 1}/${study.questions.length}',
+                  exam: exam == null
+                      ? null
+                      : '${exam.index + 1}/${exam.questions.length}',
+                  onStudy: () => _start('study', e),
+                  onExam: () => _start('exam', e),
                 );
               },
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// An evaluation in the list, on a tint of the theme color: a ring with the
+/// learned share, the title, the question count and last score, then a row
+/// per mode with its progress when a session is in progress.
+class _EvaluationCard extends StatelessWidget {
+  final Evaluation evaluation;
+  final int learned;
+  final int? lastPercent;
+  final String? study;
+  final String? exam;
+  final VoidCallback onStudy;
+  final VoidCallback onExam;
+
+  const _EvaluationCard({
+    required this.evaluation,
+    required this.learned,
+    required this.lastPercent,
+    required this.study,
+    required this.exam,
+    required this.onStudy,
+    required this.onExam,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final onCard = scheme.onSecondaryContainer;
+    final faint = onCard.withValues(alpha: 0.12);
+    final total = evaluation.questions.length;
+    final share = total == 0 ? 0.0 : learned / total;
+    Widget mode(
+      IconData icon,
+      String title,
+      String? progress,
+      VoidCallback onTap,
+    ) => ListTile(
+      leading: Icon(icon),
+      title: Text(title),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (progress != null)
+            Text(progress, style: theme.textTheme.labelLarge),
+          const SizedBox(width: 8),
+          const Icon(Icons.chevron_right),
+        ],
+      ),
+      iconColor: onCard,
+      textColor: onCard,
+      onTap: onTap,
+    );
+    final divider = Divider(height: 1, color: faint);
+    return Card(
+      color: scheme.secondaryContainer,
+      elevation: 0,
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Tooltip(
+                  message: '$learned de $total aprendidas',
+                  child: SizedBox.square(
+                    dimension: 56,
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        CircularProgressIndicator(
+                          value: share,
+                          strokeWidth: 5,
+                          backgroundColor: faint,
+                          // ignore: deprecated_member_use
+                          year2023: false,
+                        ),
+                        Center(
+                          child: Text(
+                            '${(share * 100).round()}%',
+                            style: theme.textTheme.labelLarge?.copyWith(
+                              color: onCard,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        evaluation.title,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          color: onCard,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        [
+                          '$total preguntas',
+                          if (lastPercent != null) 'último $lastPercent%',
+                        ].join(' · '),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: onCard.withValues(alpha: 0.7),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          divider,
+          mode(Icons.menu_book, 'Estudiar', study, onStudy),
+          divider,
+          mode(Icons.assignment, 'Evaluar', exam, onExam),
+        ],
       ),
     );
   }
