@@ -1,6 +1,7 @@
 import 'dart:async' show scheduleMicrotask;
 
-import 'package:flutter/gestures.dart' show Drag;
+import 'package:flutter/gestures.dart'
+    show DeviceGestureSettings, Drag, kTouchSlop;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
@@ -61,8 +62,6 @@ class _StudyPageState extends State<StudyPage>
   final _bookmarks = BookmarksController.i;
   late Set<int> _bookmarked = _bookmarks.of(widget.evaluation.id);
   final _highlights = HighlightsController.i;
-  // Marker mode: text becomes selectable, so swiping on it no longer pages.
-  bool _marker = false;
   // Content is only built while the sheet is open, so the peek shows just
   // the handle and tabs.
   bool _sheetOpen = false;
@@ -130,20 +129,7 @@ class _StudyPageState extends State<StudyPage>
       for (var i = 0; i < q.options.length; i++)
         '${String.fromCharCode(65 + i)}. ${q.options[i]}',
     ].join('\n\n');
-    final service = DefaultProcessTextService();
-    // ponytail: matched by label, Android has no id for "translate".
-    final action = (await service.queryTextActions())
-        .where(
-          (a) => RegExp('tradu|transl', caseSensitive: false).hasMatch(a.label),
-        )
-        .firstOrNull;
-    if (action != null) {
-      await service.processTextAction(action.id, text, true);
-    } else if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Instala Google Traductor para traducir')),
-      );
-    }
+    await translate(context, text);
   }
 
   void _goTo(int index) {
@@ -477,13 +463,6 @@ class _StudyPageState extends State<StudyPage>
               onPressed: _search,
               icon: const Icon(Icons.search),
             ),
-            IconButton(
-              tooltip: _marker ? 'Dejar de resaltar' : 'Resaltar texto',
-              isSelected: _marker,
-              onPressed: () => setState(() => _marker = !_marker),
-              icon: const Icon(Icons.border_color_outlined),
-              selectedIcon: const Icon(Icons.border_color),
-            ),
             if (_learnedIds.contains(current.id))
               IconButton(
                 tooltip: 'Quitar de aprendidas',
@@ -539,6 +518,7 @@ class _StudyPageState extends State<StudyPage>
     final hideAnswers = _settings.hideAnswers.value;
     // Also room for the slider pill, so the last lines can scroll above it.
     final bottomSpace = peek + (_hasSlider ? _pillHeight + 8 : 0);
+    final mq = MediaQuery.of(context);
     final pager = PageView.builder(
       controller: _pageController,
       physics: const _SnapPhysics(parent: ClampingScrollPhysics()),
@@ -578,7 +558,6 @@ class _StudyPageState extends State<StudyPage>
           textBuilder: (field, text, style) => HighlightableText(
             text: text,
             style: style,
-            selectable: _marker,
             highlights: _highlights.of(widget.evaluation.id, q.id, field),
             onPaint: (start, end, color) => setState(
               () => _highlights.paint(
@@ -592,8 +571,9 @@ class _StudyPageState extends State<StudyPage>
             ),
           ),
         );
-        // Horizontal paging doesn't fight the card's vertical scroll.
-        if (!vertical) return card();
+        // Horizontal paging doesn't fight the card's vertical scroll. The
+        // card gets the normal slop back (see below).
+        if (!vertical) return MediaQuery(data: mq, child: card());
         return Stack(
           clipBehavior: Clip.none,
           children: [
@@ -622,7 +602,20 @@ class _StudyPageState extends State<StudyPage>
     return Listener(
       onPointerUp: _releasePager,
       onPointerCancel: _releasePager,
-      child: pager,
+      // Selectable text claims horizontal drags at the touch slop on Android
+      // and, as the deeper widget, wins ties: half the slop lets a horizontal
+      // pager claim the swipe first.
+      // Always wrapped: changing the tree would rebuild the pager at page 0.
+      child: MediaQuery(
+        data: vertical
+            ? mq
+            : mq.copyWith(
+                gestureSettings: DeviceGestureSettings(
+                  touchSlop: (mq.gestureSettings.touchSlop ?? kTouchSlop) / 2,
+                ),
+              ),
+        child: pager,
+      ),
     );
   });
 
