@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import '../../domain/usecases/clear_history.dart';
 import '../controllers/bookmarks_controller.dart';
 import '../controllers/highlights_controller.dart';
+import '../widgets/confirm_dialog.dart';
 import '../widgets/reading_settings_panel.dart';
 import 'theme_page.dart';
 
@@ -73,26 +74,14 @@ class _MemorySettingsPage extends StatelessWidget {
     String what,
     Future<void> Function() clear,
   ) async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('¿Borrar $what?'),
-        content: const Text(
-          'Se borran en todas las evaluaciones. No se puede deshacer.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancelar'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Borrar'),
-          ),
-        ],
-      ),
+    final ok = await showConfirmDialog(
+      context,
+      icon: Icons.delete_outline_rounded,
+      title: '¿Borrar $what?',
+      message: 'Se borran en todas las evaluaciones. No se puede deshacer.',
+      confirm: 'Borrar',
     );
-    if (ok != true) return;
+    if (!ok) return;
     await clear();
     if (context.mounted) {
       ScaffoldMessenger.of(context)
