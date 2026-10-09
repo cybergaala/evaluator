@@ -60,7 +60,9 @@ void main() {
     // Horizontal.
     settings.vertical.value = false;
     await tester.pumpAndSettle();
-    await tester.drag(find.text('Q2'), const Offset(-500, 0));
+    // Like a finger: past the pager's (halved) slop before the text's, which
+    // would otherwise claim the drag for selection.
+    await tester.drag(find.text('Q2'), const Offset(-500, 0), touchSlopX: 10);
     await tester.pumpAndSettle();
     expect(find.text('3/3'), findsOneWidget);
   });
@@ -333,17 +335,15 @@ void main() {
     expect(find.text('Sin preguntas guardadas'), findsOneWidget);
     expect(BookmarksController.i.of('e'), isEmpty);
   });
-  testWidgets('marker mode paints the selection and persists it', (
-    tester,
-  ) async {
+
+  testWidgets('selecting text paints it and persists it', (tester) async {
     await setUpControllers();
     addTearDown(Get.reset);
     await tester.pumpWidget(
       GetMaterialApp(home: StudyPage(evaluation: evaluation)),
     );
-
-    await tester.tap(find.byTooltip('Resaltar texto'));
     await tester.pumpAndSettle();
+
     // Long press on the word (the text box is full width) selects it, then
     // the toolbar shows the colors.
     await tester.longPressAt(
