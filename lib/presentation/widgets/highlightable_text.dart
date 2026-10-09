@@ -25,7 +25,7 @@ Future<void> translate(BuildContext context, String text) async {
   final opened = await launchUrl(url, mode: LaunchMode.externalApplication);
   if (!opened && context.mounted) {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('No se pudo abrir el traductor')),
+      const SnackBar(content: Text("Couldn't open the translator")),
     );
   }
 }
@@ -135,12 +135,12 @@ class _SelectableHighlightState extends State<_SelectableHighlight> {
             // neonColors so highlights saved with them still draw.
             for (final i in const [0, 1, 3])
               IconButton(
-                tooltip: 'Resaltar',
+                tooltip: 'Highlight',
                 onPressed: () => paint(i),
                 icon: Icon(Icons.circle, color: neonColors[i]),
               ),
             IconButton(
-              tooltip: 'Borrar resaltado',
+              tooltip: 'Erase highlight',
               onPressed: () => paint(null),
               icon: const Icon(Icons.format_color_reset),
             ),
@@ -148,12 +148,12 @@ class _SelectableHighlightState extends State<_SelectableHighlight> {
             for (final item in state.contextMenuButtonItems)
               if (item.type == ContextMenuButtonType.copy)
                 IconButton(
-                  tooltip: 'Copiar',
+                  tooltip: 'Copy',
                   onPressed: item.onPressed,
                   icon: const Icon(Icons.copy),
                 ),
             IconButton(
-              tooltip: 'Traducir',
+              tooltip: 'Translate',
               onPressed: () {
                 final text = switch (selected()) {
                   (final start, final end) =>

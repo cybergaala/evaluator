@@ -25,7 +25,7 @@ Future<bool> showConfirmDialog(
             ),
             TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancelar'),
+              child: const Text('Cancel'),
             ),
           ],
         ),

@@ -312,27 +312,27 @@ void main() {
     expect(find.text('3/3'), findsOneWidget);
 
     // Save from the AppBar.
-    await tester.tap(find.byTooltip('Guardar'));
+    await tester.tap(find.byTooltip('Save'));
     await tester.pumpAndSettle();
-    expect(find.byTooltip('Quitar de guardadas'), findsOneWidget);
+    expect(find.byTooltip('Remove from saved'), findsOneWidget);
     expect(BookmarksController.i.of('e'), {3});
 
     // Jump back to Q1, then open the list and pick the bookmark.
     await tester.drag(find.byType(Slider), const Offset(-1000, 0));
     await tester.pumpAndSettle();
     expect(find.text('1/3'), findsOneWidget);
-    await tester.tap(find.byTooltip('Guardadas'));
+    await tester.tap(find.byTooltip('Saved'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Q3').last);
     await tester.pumpAndSettle();
     expect(find.text('3/3'), findsOneWidget);
 
     // Remove it from the list's trailing action.
-    await tester.tap(find.byTooltip('Guardadas'));
+    await tester.tap(find.byTooltip('Saved'));
     await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip('Quitar'));
+    await tester.tap(find.byTooltip('Remove'));
     await tester.pumpAndSettle();
-    expect(find.text('Sin preguntas guardadas'), findsOneWidget);
+    expect(find.text('No saved questions'), findsOneWidget);
     expect(BookmarksController.i.of('e'), isEmpty);
   });
 
@@ -350,7 +350,7 @@ void main() {
       tester.getTopLeft(find.text('Q1')) + const Offset(5, 5),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip('Resaltar').first);
+    await tester.tap(find.byTooltip('Highlight').first);
     await tester.pumpAndSettle();
     expect(HighlightsController.i.of('e', 1, 'q'), [(0, 2, 0)]);
 
@@ -359,7 +359,7 @@ void main() {
       tester.getTopLeft(find.text('Q1')) + const Offset(5, 5),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip('Borrar resaltado'));
+    await tester.tap(find.byTooltip('Erase highlight'));
     await tester.pumpAndSettle();
     expect(HighlightsController.i.of('e', 1, 'q'), isEmpty);
   });
@@ -376,14 +376,14 @@ void main() {
       GetMaterialApp(home: StudyPage(evaluation: evaluation)),
     );
 
-    // Hidden until "Mostrar respuesta".
-    expect(find.text('Mostrar respuesta'), findsOneWidget);
-    await tester.tap(find.text('Mostrar respuesta'));
+    // Hidden until "Show answer".
+    expect(find.text('Show answer'), findsOneWidget);
+    await tester.tap(find.text('Show answer'));
     await tester.pumpAndSettle();
-    expect(find.text('Mostrar respuesta'), findsNothing);
+    expect(find.text('Show answer'), findsNothing);
 
     // Search by text.
-    await tester.tap(find.byTooltip('Buscar'));
+    await tester.tap(find.byTooltip('Search'));
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField), 'q3');
     await tester.pumpAndSettle();
@@ -392,14 +392,14 @@ void main() {
     expect(find.text('3/3'), findsOneWidget);
 
     // Highlighted list shows Q3.
-    await tester.tap(find.byTooltip('Resaltadas'));
+    await tester.tap(find.byTooltip('Highlights'));
     await tester.pumpAndSettle();
     expect(find.text('Q3'), findsNWidgets(2));
 
     // Only bookmarked: one page, the bookmarked Q2.
-    await tester.tap(find.byTooltip('Guardadas'));
+    await tester.tap(find.byTooltip('Saved'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Estudiar solo guardadas'));
+    await tester.tap(find.text('Study saved only'));
     await tester.pumpAndSettle();
     expect(find.text('1/1'), findsOneWidget);
     expect(find.text('Q2'), findsNWidgets(2));
@@ -418,7 +418,7 @@ void main() {
     expect(find.text('Q2'), findsOneWidget);
 
     // Mark Q2 from the AppBar; it stays until the next session.
-    await tester.tap(find.byTooltip('Marcar como aprendida'));
+    await tester.tap(find.byTooltip('Mark as learned'));
     await tester.pumpAndSettle();
     expect(LearnedController.i.of('e'), {1, 2});
     expect(find.text('1/2'), findsOneWidget);
@@ -427,10 +427,10 @@ void main() {
         .removeCurrentSnackBar();
     await tester.pumpAndSettle();
 
-    // "Mostrar aprendidas" brings them back, keeping Q2 on screen.
-    await tester.tap(find.byTooltip('Ajustes'));
+    // "Show learned" brings them back, keeping Q2 on screen.
+    await tester.tap(find.byTooltip('Settings'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Mostrar aprendidas'));
+    await tester.tap(find.text('Show learned'));
     await tester.pumpAndSettle();
     expect(find.text('2/3'), findsOneWidget);
   });

@@ -15,7 +15,7 @@ import '../widgets/reading_settings_panel.dart';
 class ExamPage extends StatefulWidget {
   final Evaluation evaluation;
 
-  /// Ids of the questions to ask ("Solo aprendidas"); all when null.
+  /// Ids of the questions to ask ("Learned only"); all when null.
   final Set<int>? only;
 
   const ExamPage({super.key, required this.evaluation, this.only});
@@ -65,7 +65,7 @@ class _ExamPageState extends State<ExamPage> {
       // Tapping a selected option again unselects it (matters for multi-answer).
       if (_selected.remove(option)) return;
       if (_answered) {
-        // Only reachable with "revelar al final": swap a single answer, and
+        // Only reachable with "Reveal at the end": swap a single answer, and
         // ignore extra taps on multi-answer questions.
         if (_current.answers.length > 1) return;
         _selected.clear();
@@ -102,11 +102,11 @@ class _ExamPageState extends State<ExamPage> {
     final ok = await showConfirmDialog(
       context,
       icon: Icons.flag_rounded,
-      title: '¿Finalizar evaluación?',
+      title: 'Finish exam?',
       message: left == 0
-          ? 'Se guardará tu resultado.'
-          : 'Quedan $left sin responder; cuentan como incorrectas.',
-      confirm: 'Finalizar',
+          ? 'Your score will be saved.'
+          : '$left left unanswered; they count as wrong.',
+      confirm: 'Finish',
     );
     if (ok) await _finish();
   }
@@ -137,8 +137,8 @@ class _ExamPageState extends State<ExamPage> {
     return Obx(
       () => ConfirmExit(
         enabled: !_finished,
-        title: '¿Salir de la evaluación?',
-        message: 'Podrás continuar donde te quedaste.',
+        title: 'Leave the exam?',
+        message: 'You can continue where you left off.',
         child: Scaffold(
           appBar: AppBar(
             title: Text(
@@ -146,13 +146,13 @@ class _ExamPageState extends State<ExamPage> {
                   ? widget.evaluation.title
                   : [
                       '${_index + 1}/${_questions.length}',
-                      if (!_settings.revealAtEnd.value) '$_correct correctas',
+                      if (!_settings.revealAtEnd.value) '$_correct correct',
                     ].join(' · '),
             ),
             actions: [
               if (!_finished) ...[
                 IconButton(
-                  tooltip: 'Tamaño de texto',
+                  tooltip: 'Text size',
                   onPressed: () => ReadingSettingsPanel.showSheet(
                     context,
                     textSizeOnly: true,
@@ -160,7 +160,7 @@ class _ExamPageState extends State<ExamPage> {
                   icon: const Icon(Icons.format_size),
                 ),
                 IconButton(
-                  tooltip: 'Finalizar evaluación',
+                  tooltip: 'Finish exam',
                   onPressed: _confirmFinish,
                   icon: const Icon(Icons.flag),
                 ),
@@ -202,7 +202,7 @@ class _ExamPageState extends State<ExamPage> {
                   child: FilledButton.icon(
                     onPressed: _next,
                     icon: Icon(isLast ? Icons.flag : Icons.arrow_forward),
-                    label: Text(isLast ? 'Ver resultado' : 'Siguiente'),
+                    label: Text(isLast ? 'See result' : 'Next'),
                   ),
                 )
               : null,
@@ -220,18 +220,18 @@ class _ExamPageState extends State<ExamPage> {
         children: [
           Text('${attempt.percent}%', style: textTheme.displayLarge),
           Text(
-            '$_correct de ${_questions.length} correctas',
+            '$_correct of ${_questions.length} correct',
             style: textTheme.titleMedium,
           ),
           const SizedBox(height: 32),
           FilledButton.icon(
             onPressed: _restart,
             icon: const Icon(Icons.replay),
-            label: const Text('Reintentar'),
+            label: const Text('Retry'),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Volver'),
+            child: const Text('Back'),
           ),
         ],
       ),

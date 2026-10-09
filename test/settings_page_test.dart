@@ -10,7 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'fake_history.dart';
 
 void main() {
-  testWidgets('Memoria clears highlights, bookmarks and history separately', (
+  testWidgets('Storage clears highlights, bookmarks and history separately', (
     tester,
   ) async {
     SharedPreferences.setMockInitialValues({
@@ -28,31 +28,31 @@ void main() {
     addTearDown(Get.reset);
     await tester.pumpWidget(const GetMaterialApp(home: SettingsPage()));
 
-    await tester.tap(find.text('Memoria'));
+    await tester.tap(find.text('Storage'));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Borrar resaltados'));
+    await tester.tap(find.text('Clear highlights'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Borrar'));
+    await tester.tap(find.text('Clear'));
     await tester.pumpAndSettle();
     expect(prefs.getKeys(), {'bookmarks_a', 'theme_mode'});
 
     // Cancel keeps them.
-    await tester.tap(find.text('Borrar preguntas guardadas'));
+    await tester.tap(find.text('Clear saved questions'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Cancelar'));
+    await tester.tap(find.text('Cancel'));
     await tester.pumpAndSettle();
     expect(prefs.getKeys(), contains('bookmarks_a'));
 
-    await tester.tap(find.text('Borrar preguntas guardadas'));
+    await tester.tap(find.text('Clear saved questions'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Borrar'));
+    await tester.tap(find.text('Clear'));
     await tester.pumpAndSettle();
     expect(prefs.getKeys(), {'theme_mode'});
 
-    await tester.tap(find.text('Borrar historial'));
+    await tester.tap(find.text('Clear history'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Borrar'));
+    await tester.tap(find.text('Clear'));
     await tester.pumpAndSettle();
     expect(history.entries, isEmpty);
   });
