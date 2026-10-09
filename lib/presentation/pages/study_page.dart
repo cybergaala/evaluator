@@ -425,14 +425,11 @@ class _StudyPageState extends State<StudyPage>
             // Handle (22) + TabBar (48), plus the gesture bar under them.
             final peek = 70 + MediaQuery.paddingOf(context).bottom;
             final minSize = (peek / constraints.maxHeight).clamp(0.0, 0.5);
+            // The pager runs behind the sheet: each page ends in a [peek]
+            // blank space, so a zigzag left there by a cancelled swipe hides
+            // behind the sheet.
             return Stack(
-              children: [
-                Padding(
-                  padding: EdgeInsets.only(bottom: peek),
-                  child: _pager(),
-                ),
-                _bottomSheet(context, minSize),
-              ],
+              children: [_pager(peek), _bottomSheet(context, minSize)],
             );
           },
         ),
@@ -440,7 +437,7 @@ class _StudyPageState extends State<StudyPage>
     );
   }
 
-  Widget _pager() => Obx(() {
+  Widget _pager(double peek) => Obx(() {
     // Read here: itemBuilder runs lazily, outside Obx's tracking.
     final textScale = _settings.textScale.value;
     final justify = _settings.justify.value;
@@ -474,6 +471,9 @@ class _StudyPageState extends State<StudyPage>
               : null,
           textScale: textScale,
           justify: justify,
+          // Behind the sheet, inside the scroll so the text can still reach
+          // above it; the zigzag of the next page sits in the middle of it.
+          bottomSpace: peek,
           textBuilder: (field, text, style) => HighlightableText(
             text: text,
             style: style,
@@ -496,21 +496,16 @@ class _StudyPageState extends State<StudyPage>
         return Stack(
           clipBehavior: Clip.none,
           children: [
-            // Blank space at the bottom of every page; the zigzag of the next
-            // one sits in the middle of it.
-            Padding(
-              padding: const EdgeInsets.only(bottom: _Zigzag.gap),
-              child: NotificationListener<ScrollNotification>(
-                onNotification: _handOver,
-                child: card,
-              ),
+            NotificationListener<ScrollNotification>(
+              onNotification: _handOver,
+              child: card,
             ),
             // Above the page, centered in the previous page's bottom space, so
             // both questions get the same room around it. Seen only while
             // swiping: the pager clips it once the page settles.
             if (index > 0)
-              const Positioned(
-                top: -(_Zigzag.gap + _Zigzag.height) / 2,
+              Positioned(
+                top: -(peek + _Zigzag.height) / 2,
                 left: 0,
                 right: 0,
                 child: _Zigzag(),
@@ -604,9 +599,6 @@ class _QuestionSearch extends SearchDelegate<int?> {
 /// A zigzag line across the page, between questions in vertical paging.
 class _Zigzag extends StatelessWidget {
   static const height = 10.0;
-
-  /// Space at the bottom of each page that holds the next page's zigzag.
-  static const gap = 40.0;
 
   const _Zigzag();
 

@@ -15,6 +15,9 @@ class QuestionCard extends StatelessWidget {
   final double textScale;
   final bool justify;
 
+  /// Extra blank space after the content (study mode's zigzag gap).
+  final double bottomSpace;
+
   /// Builds each text (`field`: `q` question, `o<i>` option, `e`
   /// explanation). Defaults to plain [Text]; study mode passes a highlighter.
   final Widget Function(String field, String text, TextStyle? style)?
@@ -29,6 +32,7 @@ class QuestionCard extends StatelessWidget {
     this.footer,
     this.textScale = 1,
     this.justify = false,
+    this.bottomSpace = 0,
     this.textBuilder,
   });
 
@@ -66,7 +70,7 @@ class QuestionCard extends StatelessWidget {
           // OverscrollNotification (study page hands it to the pager).
           physics: const ClampingScrollPhysics(),
           // Left clears the option letters, which stick out of the tiles.
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+          padding: EdgeInsets.fromLTRB(24, 20, 24, 20 + bottomSpace),
           children: [
             _text('q', question.question, theme.textTheme.bodyLarge),
             if (question.isMultiAnswer)
