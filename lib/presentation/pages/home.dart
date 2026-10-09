@@ -33,6 +33,7 @@ class _HomePageState extends State<HomePage> {
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _pageIndex,
         type: BottomNavigationBarType.fixed,
+        elevation: 0,
         onTap: (index) => _pageController.animateToPage(
           index,
           duration: const Duration(milliseconds: 200),
