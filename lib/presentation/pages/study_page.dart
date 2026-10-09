@@ -67,7 +67,7 @@ class _StudyPageState extends State<StudyPage>
   // the handle and tabs.
   bool _sheetOpen = false;
   final _sheet = DraggableScrollableController();
-  late final _tabs = TabController(length: 3, vsync: this);
+  late final _tabs = TabController(length: 4, vsync: this);
   final _saveHistory = Get.find<SaveHistoryEntry>();
   // Study time; paused while the app is in the background.
   final _clock = Stopwatch()..start();
@@ -117,6 +117,31 @@ class _StudyPageState extends State<StudyPage>
           duration: Duration(seconds: 2),
           content: Text('Aprendida: no se mostrará en la próxima sesión'),
         ),
+      );
+    }
+  }
+
+  /// Opens the current question and its options in the system translator
+  /// (Google Translate's PROCESS_TEXT action).
+  Future<void> _translate() async {
+    final q = _shown[_page];
+    final text = [
+      q.question,
+      for (var i = 0; i < q.options.length; i++)
+        '${String.fromCharCode(65 + i)}. ${q.options[i]}',
+    ].join('\n\n');
+    final service = DefaultProcessTextService();
+    // ponytail: matched by label, Android has no id for "translate".
+    final action = (await service.queryTextActions())
+        .where(
+          (a) => RegExp('tradu|transl', caseSensitive: false).hasMatch(a.label),
+        )
+        .firstOrNull;
+    if (action != null) {
+      await service.processTextAction(action.id, text, true);
+    } else if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Instala Google Traductor para traducir')),
       );
     }
   }
@@ -330,18 +355,48 @@ class _StudyPageState extends State<StudyPage>
                   TabBar(
                     controller: _tabs,
                     dividerHeight: 0,
-                    onTap: (_) {
+                    // No underline: the selected icon's color is enough.
+                    indicator: const BoxDecoration(),
+                    onTap: (i) {
+                      // The last tab is an action, not a page: stay put.
+                      if (i == 3) {
+                        _tabs.index = _tabs.previousIndex;
+                        _translate();
+                        return;
+                      }
                       setState(() {});
                       _expandSheet();
                     },
+                    // Icons only; the tooltip names each tab.
                     tabs: [
-                      const Tab(text: 'Ajustes'),
-                      Tab(
-                        text: _bookmarked.isEmpty
-                            ? 'Guardadas'
-                            : 'Guardadas (${_bookmarked.length})',
+                      const Tab(
+                        icon: Tooltip(
+                          message: 'Ajustes',
+                          child: Icon(Icons.tune),
+                        ),
                       ),
-                      const Tab(text: 'Resaltadas'),
+                      Tab(
+                        icon: Tooltip(
+                          message: 'Guardadas',
+                          child: Badge.count(
+                            count: _bookmarked.length,
+                            isLabelVisible: _bookmarked.isNotEmpty,
+                            child: const Icon(Icons.bookmarks_outlined),
+                          ),
+                        ),
+                      ),
+                      const Tab(
+                        icon: Tooltip(
+                          message: 'Resaltadas',
+                          child: Icon(Icons.border_color_outlined),
+                        ),
+                      ),
+                      const Tab(
+                        icon: Tooltip(
+                          message: 'Traducir',
+                          child: Icon(Icons.translate),
+                        ),
+                      ),
                     ],
                   ),
                 ],
