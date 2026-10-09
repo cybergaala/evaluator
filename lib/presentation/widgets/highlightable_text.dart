@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../controllers/highlights_controller.dart';
 
@@ -12,21 +12,20 @@ const neonColors = [
   Color(0xFFFF9F00),
 ];
 
-/// Opens [text] in the system translator (Google Translate's PROCESS_TEXT
-/// action), or says to install it.
+/// Opens [text] in Google Translate, always English → Spanish: the app when
+/// installed (it handles translate.google.com links), else the browser.
+/// Spanish has no Latin American variant there; "es" is the only one.
 Future<void> translate(BuildContext context, String text) async {
-  final service = DefaultProcessTextService();
-  // ponytail: matched by label, Android has no id for "translate".
-  final action = (await service.queryTextActions())
-      .where(
-        (a) => RegExp('tradu|transl', caseSensitive: false).hasMatch(a.label),
-      )
-      .firstOrNull;
-  if (action != null) {
-    await service.processTextAction(action.id, text, true);
-  } else if (context.mounted) {
+  final url = Uri.https('translate.google.com', '/', {
+    'sl': 'en',
+    'tl': 'es',
+    'text': text,
+    'op': 'translate',
+  });
+  final opened = await launchUrl(url, mode: LaunchMode.externalApplication);
+  if (!opened && context.mounted) {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Instala Google Traductor para traducir')),
+      const SnackBar(content: Text('No se pudo abrir el traductor')),
     );
   }
 }
