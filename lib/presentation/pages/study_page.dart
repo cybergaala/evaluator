@@ -330,18 +330,36 @@ class _StudyPageState extends State<StudyPage>
                   TabBar(
                     controller: _tabs,
                     dividerHeight: 0,
+                    // No underline: the selected icon's color is enough.
+                    indicator: const BoxDecoration(),
                     onTap: (_) {
                       setState(() {});
                       _expandSheet();
                     },
+                    // Icons only; the tooltip names each tab.
                     tabs: [
-                      const Tab(text: 'Ajustes'),
-                      Tab(
-                        text: _bookmarked.isEmpty
-                            ? 'Guardadas'
-                            : 'Guardadas (${_bookmarked.length})',
+                      const Tab(
+                        icon: Tooltip(
+                          message: 'Ajustes',
+                          child: Icon(Icons.tune),
+                        ),
                       ),
-                      const Tab(text: 'Resaltadas'),
+                      Tab(
+                        icon: Tooltip(
+                          message: 'Guardadas',
+                          child: Badge.count(
+                            count: _bookmarked.length,
+                            isLabelVisible: _bookmarked.isNotEmpty,
+                            child: const Icon(Icons.bookmarks_outlined),
+                          ),
+                        ),
+                      ),
+                      const Tab(
+                        icon: Tooltip(
+                          message: 'Resaltadas',
+                          child: Icon(Icons.border_color_outlined),
+                        ),
+                      ),
                     ],
                   ),
                 ],

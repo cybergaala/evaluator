@@ -319,14 +319,14 @@ void main() {
     await tester.drag(find.byType(Slider), const Offset(-1000, 0));
     await tester.pumpAndSettle();
     expect(find.text('1/3'), findsOneWidget);
-    await tester.tap(find.textContaining('Guardadas ('));
+    await tester.tap(find.byTooltip('Guardadas'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Q3').last);
     await tester.pumpAndSettle();
     expect(find.text('3/3'), findsOneWidget);
 
     // Remove it from the list's trailing action.
-    await tester.tap(find.textContaining('Guardadas ('));
+    await tester.tap(find.byTooltip('Guardadas'));
     await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('Quitar'));
     await tester.pumpAndSettle();
@@ -392,12 +392,12 @@ void main() {
     expect(find.text('3/3'), findsOneWidget);
 
     // Highlighted list shows Q3.
-    await tester.tap(find.text('Resaltadas'));
+    await tester.tap(find.byTooltip('Resaltadas'));
     await tester.pumpAndSettle();
     expect(find.text('Q3'), findsNWidgets(2));
 
     // Only bookmarked: one page, the bookmarked Q2.
-    await tester.tap(find.textContaining('Guardadas ('));
+    await tester.tap(find.byTooltip('Guardadas'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Estudiar solo guardadas'));
     await tester.pumpAndSettle();
@@ -428,7 +428,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // "Mostrar aprendidas" brings them back, keeping Q2 on screen.
-    await tester.tap(find.text('Ajustes'));
+    await tester.tap(find.byTooltip('Ajustes'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Mostrar aprendidas'));
     await tester.pumpAndSettle();
