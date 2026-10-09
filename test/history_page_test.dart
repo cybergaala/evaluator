@@ -29,7 +29,7 @@ void main() {
 
     // Newest first.
     expect(find.text('Bank 34'), findsOneWidget);
-    expect(find.textContaining('Evaluación · 1/2 · 50%'), findsWidgets);
+    expect(find.textContaining('Exam · 1/2 · 50%'), findsWidgets);
 
     // Fling to the end until the oldest entry (only on page 2) shows up.
     await tester.scrollUntilVisible(
@@ -54,7 +54,7 @@ void main() {
       await tester.pump();
     }
     // Empty history ends in noMore, so look for the header's time message.
-    final header = find.textContaining('Actualizado a las');
+    final header = find.textContaining('Updated at');
     expect(header, findsOneWidget);
     expect(tester.getRect(header).top, greaterThanOrEqualTo(appBarBottom));
     // The AppBar stays still (clamping).

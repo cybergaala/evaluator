@@ -36,7 +36,7 @@ class _EvaluationsPageState extends State<EvaluationsPage>
   Future<void> _load() async {
     final evaluations = await _getEvaluations();
     final history = {
-      // Only the last attempt, for the subtitle; the Historial tab has the rest.
+      // Only the last attempt, for the subtitle; the History tab has the rest.
       for (final e in evaluations) e.id: await _getAttempts(e.id, limit: 1),
     };
     if (!mounted) return;
@@ -73,16 +73,16 @@ class _EvaluationsPageState extends State<EvaluationsPage>
             children: [
               ListTile(
                 leading: const Icon(Icons.play_arrow),
-                title: const Text('Continuar'),
+                title: const Text('Continue'),
                 subtitle: Text(
-                  'Pregunta ${saved.index + 1} de ${saved.questions.length}',
+                  'Question ${saved.index + 1} of ${saved.questions.length}',
                 ),
                 onTap: () => Navigator.pop(context, true),
               ),
               ListTile(
                 leading: const Icon(Icons.restart_alt),
-                title: const Text('Empezar de nuevo'),
-                subtitle: const Text('Se descarta el progreso actual'),
+                title: const Text('Start over'),
+                subtitle: const Text('Discards the current progress'),
                 onTap: () => Navigator.pop(context, false),
               ),
             ],
@@ -106,14 +106,14 @@ class _EvaluationsPageState extends State<EvaluationsPage>
             children: [
               ListTile(
                 leading: const Icon(Icons.assignment),
-                title: const Text('Todas las preguntas'),
-                subtitle: Text('${e.questions.length} preguntas'),
+                title: const Text('All questions'),
+                subtitle: Text('${e.questions.length} questions'),
                 onTap: () => Navigator.pop(context, false),
               ),
               ListTile(
                 leading: const Icon(Icons.school),
-                title: const Text('Solo aprendidas'),
-                subtitle: Text('${learned.length} preguntas'),
+                title: const Text('Learned only'),
+                subtitle: Text('${learned.length} questions'),
                 onTap: () => Navigator.pop(context, true),
               ),
             ],
@@ -137,7 +137,7 @@ class _EvaluationsPageState extends State<EvaluationsPage>
         onRefresh: _load,
         child: CustomScrollView(
           slivers: [
-            const SliverAppBar.large(title: Text('Inicio')),
+            const SliverAppBar.large(title: Text('Home')),
             const HeaderLocator.sliver(clearExtent: false),
             if (_loaded && _evaluations.isEmpty)
               const SliverFillRemaining(
@@ -241,7 +241,7 @@ class _EvaluationCard extends StatelessWidget {
             child: Row(
               children: [
                 Tooltip(
-                  message: '$learned de $total aprendidas',
+                  message: '$learned of $total learned',
                   child: SizedBox.square(
                     dimension: 56,
                     child: Stack(
@@ -280,8 +280,8 @@ class _EvaluationCard extends StatelessWidget {
                       const SizedBox(height: 2),
                       Text(
                         [
-                          '$total preguntas',
-                          if (lastPercent != null) 'último $lastPercent%',
+                          '$total questions',
+                          if (lastPercent != null) 'last $lastPercent%',
                         ].join(' · '),
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: onCard.withValues(alpha: 0.7),
@@ -294,9 +294,9 @@ class _EvaluationCard extends StatelessWidget {
             ),
           ),
           divider,
-          mode(Icons.menu_book, 'Estudiar', study, onStudy),
+          mode(Icons.menu_book, 'Study', study, onStudy),
           divider,
-          mode(Icons.assignment, 'Evaluar', exam, onExam),
+          mode(Icons.assignment, 'Exam', exam, onExam),
         ],
       ),
     );

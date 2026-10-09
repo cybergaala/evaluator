@@ -57,12 +57,12 @@ class _HistoryPageState extends State<HistoryPage> {
         onLoad: _loadMore,
         child: CustomScrollView(
           slivers: [
-            const SliverAppBar.large(title: Text('Historial')),
+            const SliverAppBar.large(title: Text('History')),
             const HeaderLocator.sliver(clearExtent: false),
             if (_loaded && _entries.isEmpty)
               const SliverFillRemaining(
                 hasScrollBody: false,
-                child: Center(child: Text('Sin historial todavía')),
+                child: Center(child: Text('No history yet')),
               ),
             SliverList.builder(
               itemCount: _entries.length,
@@ -78,11 +78,11 @@ class _HistoryPageState extends State<HistoryPage> {
     final (icon, detail) = switch (entry) {
       StudySession(:final duration) => (
         Icons.menu_book,
-        'Estudio · ${formatDuration(duration)}',
+        'Study · ${formatDuration(duration)}',
       ),
       Attempt(:final correct, :final total, :final percent) => (
         Icons.assignment,
-        'Evaluación · $correct/$total · $percent%',
+        'Exam · $correct/$total · $percent%',
       ),
     };
     return ListTile(

@@ -39,7 +39,7 @@ class _StudyPageState extends State<StudyPage> with TickerProviderStateMixin {
       _saved?.questions ?? _settings.prepare(widget.evaluation.questions);
   final _learned = LearnedController.i;
   late Set<int> _learnedIds = _learned.of(widget.evaluation.id);
-  // Learned questions are hidden unless "Mostrar aprendidas", or all of them
+  // Learned questions are hidden unless "Show learned", or all of them
   // are learned (nothing to show otherwise).
   late bool _showLearned = _questions.every((q) => _learnedIds.contains(q.id));
   bool _onlySaved = false;
@@ -49,7 +49,7 @@ class _StudyPageState extends State<StudyPage> with TickerProviderStateMixin {
   // page; it applies when a filter changes or on the next session.
   late List<Question> _shown = _filter(_showLearned, _onlySaved);
   late int _page = _pageOf(_questions[_saved?.index ?? 0], _shown);
-  // Answers revealed in this session while "Ocultar respuestas" is on.
+  // Answers revealed in this session while "Hide answers" is on.
   final _revealed = <int>{};
   // While dragging the slider, progress is saved once on release.
   bool _sliding = false;
@@ -116,7 +116,7 @@ class _StudyPageState extends State<StudyPage> with TickerProviderStateMixin {
         // Short: it covers the sheet's tabs while shown.
         const SnackBar(
           duration: Duration(seconds: 2),
-          content: Text('Aprendida: no se mostrará en la próxima sesión'),
+          content: Text('Learned: it will be hidden next session'),
         ),
       );
     }
@@ -177,7 +177,7 @@ class _StudyPageState extends State<StudyPage> with TickerProviderStateMixin {
     final shown = _filter(showLearned, onlySaved);
     if (shown.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No quedarían preguntas para mostrar')),
+        const SnackBar(content: Text('No questions would be left to show')),
       );
       return;
     }
@@ -317,7 +317,7 @@ class _StudyPageState extends State<StudyPage> with TickerProviderStateMixin {
           selected: i == _page,
           trailing: removable
               ? IconButton(
-                  tooltip: 'Quitar',
+                  tooltip: 'Remove',
                   icon: const Icon(Icons.bookmark_remove),
                   onPressed: () => _toggleBookmark(_shown[i].id),
                 )
@@ -382,13 +382,13 @@ class _StudyPageState extends State<StudyPage> with TickerProviderStateMixin {
                     tabs: [
                       const Tab(
                         icon: Tooltip(
-                          message: 'Ajustes',
+                          message: 'Settings',
                           child: Icon(Icons.tune),
                         ),
                       ),
                       Tab(
                         icon: Tooltip(
-                          message: 'Guardadas',
+                          message: 'Saved',
                           child: Badge.count(
                             count: _bookmarked.length,
                             isLabelVisible: _bookmarked.isNotEmpty,
@@ -398,13 +398,13 @@ class _StudyPageState extends State<StudyPage> with TickerProviderStateMixin {
                       ),
                       const Tab(
                         icon: Tooltip(
-                          message: 'Resaltadas',
+                          message: 'Highlights',
                           child: Icon(Icons.border_color_outlined),
                         ),
                       ),
                       const Tab(
                         icon: Tooltip(
-                          message: 'Traducir',
+                          message: 'Translate',
                           child: Icon(Icons.translate),
                         ),
                       ),
@@ -420,8 +420,8 @@ class _StudyPageState extends State<StudyPage> with TickerProviderStateMixin {
                 children: [
                   SwitchListTile(
                     secondary: const Icon(Icons.school_outlined),
-                    title: const Text('Mostrar aprendidas'),
-                    subtitle: Text('${_learnedIds.length} aprendidas'),
+                    title: const Text('Show learned'),
+                    subtitle: Text('${_learnedIds.length} learned'),
                     value: _showLearned,
                     onChanged: (v) => _refilter(showLearned: v),
                   ),
@@ -433,7 +433,7 @@ class _StudyPageState extends State<StudyPage> with TickerProviderStateMixin {
                 children: [
                   SwitchListTile(
                     secondary: const Icon(Icons.filter_list),
-                    title: const Text('Estudiar solo guardadas'),
+                    title: const Text('Study saved only'),
                     value: _onlySaved,
                     onChanged: _onlySaved || _bookmarked.isNotEmpty
                         ? (v) => _refilter(onlySaved: v)
@@ -441,7 +441,7 @@ class _StudyPageState extends State<StudyPage> with TickerProviderStateMixin {
                   ),
                   ..._questionTiles(
                     _bookmarked,
-                    'Sin preguntas guardadas',
+                    'No saved questions',
                     minSize,
                     removable: true,
                   ),
@@ -451,7 +451,7 @@ class _StudyPageState extends State<StudyPage> with TickerProviderStateMixin {
               SliverList.list(
                 children: _questionTiles(
                   _highlights.questionIds(widget.evaluation.id),
-                  'Sin preguntas resaltadas',
+                  'No highlighted questions',
                   minSize,
                 ),
               ),
@@ -477,38 +477,38 @@ class _StudyPageState extends State<StudyPage> with TickerProviderStateMixin {
   Widget build(BuildContext context) {
     final current = _shown[_page];
     return ConfirmExit(
-      title: '¿Salir del modo estudio?',
-      message: 'Al volver seguirás en esta pregunta.',
+      title: 'Leave study mode?',
+      message: "You'll be back on this question.",
       child: Scaffold(
         appBar: AppBar(
           title: Text('${_page + 1}/${_shown.length}'),
           actions: [
             IconButton(
-              tooltip: 'Buscar',
+              tooltip: 'Search',
               onPressed: _search,
               icon: const Icon(Icons.search),
             ),
             if (_learnedIds.contains(current.id))
               IconButton(
-                tooltip: 'Quitar de aprendidas',
+                tooltip: 'Unmark as learned',
                 onPressed: () => _toggleLearned(current.id),
                 icon: const Icon(Icons.school),
               )
             else
               IconButton(
-                tooltip: 'Marcar como aprendida',
+                tooltip: 'Mark as learned',
                 onPressed: () => _toggleLearned(current.id),
                 icon: const Icon(Icons.school_outlined),
               ),
             if (_bookmarked.contains(current.id))
               IconButton(
-                tooltip: 'Quitar de guardadas',
+                tooltip: 'Remove from saved',
                 onPressed: () => _toggleBookmark(current.id),
                 icon: const Icon(Icons.bookmark_added),
               )
             else
               IconButton(
-                tooltip: 'Guardar',
+                tooltip: 'Save',
                 onPressed: () => _toggleBookmark(current.id),
                 icon: const Icon(Icons.bookmark_add_outlined),
               ),
@@ -571,7 +571,7 @@ class _StudyPageState extends State<StudyPage> with TickerProviderStateMixin {
                   child: FilledButton.tonalIcon(
                     onPressed: reveal,
                     icon: const Icon(Icons.visibility),
-                    label: const Text('Mostrar respuesta'),
+                    label: const Text('Show answer'),
                   ),
                 )
               : null,
@@ -736,7 +736,7 @@ const _pillTravel = _pillHeight + 8;
 class _QuestionSearch extends SearchDelegate<int?> {
   final List<Question> questions;
 
-  _QuestionSearch(this.questions) : super(searchFieldLabel: 'Buscar pregunta');
+  _QuestionSearch(this.questions) : super(searchFieldLabel: 'Search questions');
 
   /// Lowercase without accents, so "celula" finds "Célula".
   static String _fold(String s) => s.toLowerCase().replaceAllMapped(
@@ -752,7 +752,7 @@ class _QuestionSearch extends SearchDelegate<int?> {
   List<Widget> buildActions(BuildContext context) => [
     if (query.isNotEmpty)
       IconButton(
-        tooltip: 'Borrar',
+        tooltip: 'Clear',
         onPressed: () => query = '',
         icon: const Icon(Icons.clear),
       ),
@@ -773,7 +773,7 @@ class _QuestionSearch extends SearchDelegate<int?> {
           i,
     ];
     if (pages.isEmpty) {
-      return const ListTile(title: Text('Sin resultados'));
+      return const ListTile(title: Text('No results'));
     }
     return ListView(
       children: [

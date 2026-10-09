@@ -93,7 +93,7 @@ class QuestionCard extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.only(top: 8),
                   child: Text(
-                    'Selecciona ${question.answers.length} respuestas',
+                    'Select ${question.answers.length} answers',
                     style: theme.textTheme.labelMedium,
                   ),
                 ),

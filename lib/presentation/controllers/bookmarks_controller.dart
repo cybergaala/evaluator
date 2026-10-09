@@ -39,7 +39,7 @@ class BookmarksController extends GetxController {
 
 /// Question ids marked as learned per evaluation, under
 /// `learned_<evaluationId>`. Hidden by default in study mode, and the only
-/// ones asked in a "Solo aprendidas" evaluation.
+/// ones asked in a "Learned only" evaluation.
 class LearnedController extends BookmarksController {
   static LearnedController get i => Get.find();
 

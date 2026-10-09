@@ -9,7 +9,7 @@ class ThemePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Tema')),
+      appBar: AppBar(title: const Text('Theme')),
       body: Obx(() {
         final controller = ThemeController.i;
         // Read all observables so Obx always subscribes to them.

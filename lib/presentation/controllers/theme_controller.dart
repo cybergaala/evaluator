@@ -46,38 +46,34 @@ class ThemeModel {
 
   static final themes = [
     ThemeModel(
-      name: 'Sistema',
+      name: 'System',
       mode: ThemeMode.system,
       icon: GetPlatform.isMobile ? Icons.phone_android : Icons.computer,
     ),
     const ThemeModel(
-      name: 'Claro',
+      name: 'Light',
       mode: ThemeMode.light,
       icon: Icons.light_mode,
     ),
-    const ThemeModel(
-      name: 'Oscuro',
-      mode: ThemeMode.dark,
-      icon: Icons.dark_mode,
-    ),
+    const ThemeModel(name: 'Dark', mode: ThemeMode.dark, icon: Icons.dark_mode),
     const ThemeModel(
       name: 'AMOLED',
       mode: ThemeMode.dark,
       icon: Icons.contrast,
       amoled: true,
     ),
-    const ThemeModel(name: 'Azul', color: Colors.blue),
-    const ThemeModel(name: 'Rojo', color: Colors.red),
-    const ThemeModel(name: 'Rosa', color: Colors.pink),
-    const ThemeModel(name: 'Morado', color: Colors.purple),
-    const ThemeModel(name: 'Índigo', color: Colors.indigo),
-    const ThemeModel(name: 'Cian', color: Colors.cyan),
-    const ThemeModel(name: 'Verde azulado', color: Colors.teal),
-    const ThemeModel(name: 'Verde', color: Colors.green),
-    const ThemeModel(name: 'Ámbar', color: Colors.amber),
-    const ThemeModel(name: 'Naranja', color: Colors.deepOrange),
-    const ThemeModel(name: 'Marrón', color: Colors.brown),
-    const ThemeModel(name: 'Gris azulado', color: Colors.blueGrey),
+    const ThemeModel(name: 'Blue', color: Colors.blue),
+    const ThemeModel(name: 'Red', color: Colors.red),
+    const ThemeModel(name: 'Pink', color: Colors.pink),
+    const ThemeModel(name: 'Purple', color: Colors.purple),
+    const ThemeModel(name: 'Indigo', color: Colors.indigo),
+    const ThemeModel(name: 'Cyan', color: Colors.cyan),
+    const ThemeModel(name: 'Teal', color: Colors.teal),
+    const ThemeModel(name: 'Green', color: Colors.green),
+    const ThemeModel(name: 'Amber', color: Colors.amber),
+    const ThemeModel(name: 'Orange', color: Colors.deepOrange),
+    const ThemeModel(name: 'Brown', color: Colors.brown),
+    const ThemeModel(name: 'Blue gray', color: Colors.blueGrey),
   ];
 }
 
