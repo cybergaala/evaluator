@@ -1,4 +1,6 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:google_mlkit_translation/google_mlkit_translation.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../controllers/highlights_controller.dart';
@@ -12,20 +14,101 @@ const neonColors = [
   Color(0xFFFF9F00),
 ];
 
-/// Opens [text] in Google Translate, always English → Spanish: the app when
-/// installed (it handles translate.google.com links), else the browser.
-/// Spanish has no Latin American variant there; "es" is the only one.
+// ponytail: one translator for the whole app, never closed; ML Kit keeps the
+// model loaded between calls.
+final _translator = OnDeviceTranslator(
+  sourceLanguage: TranslateLanguage.english,
+  targetLanguage: TranslateLanguage.spanish,
+);
+
+/// Shows [text] translated English → Spanish in a bottom sheet, on device
+/// with ML Kit (the first time downloads the ~30 MB model). Platforms ML Kit
+/// doesn't support open Google Translate in the browser instead.
 Future<void> translate(BuildContext context, String text) async {
-  final url = Uri.https('translate.google.com', '/', {
-    'sl': 'en',
-    'tl': 'es',
-    'text': text,
-    'op': 'translate',
-  });
-  final opened = await launchUrl(url, mode: LaunchMode.externalApplication);
-  if (!opened && context.mounted) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Couldn't open the translator")),
+  if (defaultTargetPlatform != TargetPlatform.android &&
+      defaultTargetPlatform != TargetPlatform.iOS) {
+    final url = Uri.https('translate.google.com', '/', {
+      'sl': 'en',
+      'tl': 'es',
+      'text': text,
+      'op': 'translate',
+    });
+    await launchUrl(url, mode: LaunchMode.externalApplication);
+    return;
+  }
+  // Paragraph by paragraph: ML Kit joins the lines, which merged the
+  // question and its A, B, C options into one block.
+  final translation = Future.wait(
+    text.split('\n\n').map(_translator.translateText),
+  ).then((parts) => parts.join('\n\n'));
+  await showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    showDragHandle: true,
+    builder: (context) => _TranslationSheet(text, translation),
+  );
+}
+
+class _TranslationSheet extends StatelessWidget {
+  final String text;
+  final Future<String> translation;
+
+  const _TranslationSheet(this.text, this.translation);
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return ConstrainedBox(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.sizeOf(context).height * 0.7,
+      ),
+      child: SingleChildScrollView(
+        // Above the gesture bar.
+        padding: EdgeInsets.fromLTRB(
+          24,
+          0,
+          24,
+          32 + MediaQuery.paddingOf(context).bottom,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            FutureBuilder(
+              future: translation,
+              builder: (context, snapshot) => switch (snapshot) {
+                AsyncSnapshot(:final data?) => SelectableText(
+                  data,
+                  style: theme.textTheme.bodyLarge,
+                ),
+                AsyncSnapshot(hasError: true) => const Text(
+                  "Couldn't translate. The first translation needs an "
+                  'internet connection to download the language model.',
+                ),
+                _ => const Row(
+                  children: [
+                    SizedBox.square(
+                      dimension: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                    SizedBox(width: 16),
+                    Expanded(child: Text('Translating...')),
+                  ],
+                ),
+              },
+            ),
+            // The original below, so a long question shows its translation
+            // first.
+            const Divider(height: 32),
+            Text(
+              text,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
