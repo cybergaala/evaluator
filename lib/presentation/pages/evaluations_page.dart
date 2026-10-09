@@ -96,13 +96,12 @@ class _EvaluationsPageState extends State<EvaluationsPage>
       body: EasyRefresh(
         header: classicHeader(context),
         refreshOnStart: true,
-        // Clamping: the start refresh overlays the list instead of pushing it
-        // down (same as the example's refresh_on_start_page.dart).
-        refreshOnStartHeader: classicHeader(context, clamping: true),
+        refreshOnStartHeader: classicHeader(context),
         onRefresh: _load,
         child: CustomScrollView(
           slivers: [
             const SliverAppBar.large(title: Text('Inicio')),
+            const HeaderLocator.sliver(clearExtent: false),
             if (_loaded && _evaluations.isEmpty)
               const SliverFillRemaining(
                 hasScrollBody: false,

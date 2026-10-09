@@ -4,11 +4,16 @@ import 'package:flutter/material.dart';
 // Explicit colors: ClassicHeader/ClassicFooter's Theme.of() defaults render
 // dark on dark themes here.
 
-ClassicHeader classicHeader(BuildContext context, {bool clamping = false}) {
+/// Shown under the large AppBar: put a `HeaderLocator.sliver(clearExtent:
+/// false)` right after it (takes space, so it pushes the list down rather
+/// than overlaying it).
+/// Clamping, so the AppBar stays still and the header opens below it
+/// (as in the example's sample_page.dart).
+ClassicHeader classicHeader(BuildContext context) {
   final color = Theme.of(context).colorScheme.onSurface;
   return ClassicHeader(
-    clamping: clamping,
-    position: IndicatorPosition.above,
+    clamping: true,
+    position: IndicatorPosition.locator,
     dragText: 'Desliza para actualizar',
     armedText: 'Suelta para actualizar',
     readyText: 'Actualizando...',

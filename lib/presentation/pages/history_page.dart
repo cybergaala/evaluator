@@ -52,12 +52,13 @@ class _HistoryPageState extends State<HistoryPage> {
         header: classicHeader(context),
         footer: classicFooter(context),
         refreshOnStart: true,
-        refreshOnStartHeader: classicHeader(context, clamping: true),
+        refreshOnStartHeader: classicHeader(context),
         onRefresh: _refresh,
         onLoad: _loadMore,
         child: CustomScrollView(
           slivers: [
             const SliverAppBar.large(title: Text('Historial')),
+            const HeaderLocator.sliver(clearExtent: false),
             if (_loaded && _entries.isEmpty)
               const SliverFillRemaining(
                 hasScrollBody: false,
