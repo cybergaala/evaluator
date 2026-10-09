@@ -30,8 +30,7 @@ class StudyPage extends StatefulWidget {
   State<StudyPage> createState() => _StudyPageState();
 }
 
-class _StudyPageState extends State<StudyPage>
-    with SingleTickerProviderStateMixin {
+class _StudyPageState extends State<StudyPage> with TickerProviderStateMixin {
   static const _expanded = 0.7;
   final _settings = ReadingSettingsController.i;
   final _progress = ProgressController.i;
@@ -67,6 +66,8 @@ class _StudyPageState extends State<StudyPage>
   bool _sheetOpen = false;
   final _sheet = DraggableScrollableController();
   late final _tabs = TabController(length: 4, vsync: this);
+  // How far the slider pill is tucked behind the sheet: 0 shown, 1 hidden.
+  late final _pillHide = AnimationController(vsync: this);
   final _saveHistory = Get.find<SaveHistoryEntry>();
   // Study time; paused while the app is in the background.
   final _clock = Stopwatch()..start();
@@ -98,6 +99,7 @@ class _StudyPageState extends State<StudyPage>
     _pageController.dispose();
     _sheet.dispose();
     _tabs.dispose();
+    _pillHide.dispose();
     super.dispose();
   }
 
@@ -254,6 +256,29 @@ class _StudyPageState extends State<StudyPage>
       _pageController.position.context.setIgnorePointer(false);
     }
   });
+
+  /// Moves the slider pill with the cards' scroll: reading down tucks it
+  /// behind the sheet, scrolling up brings it back. On release it finishes
+  /// towards the nearer side.
+  bool _followScroll(ScrollNotification n) {
+    // The cards only, not the pager itself.
+    if (n.depth == 0 || n.metrics.axis != Axis.vertical) return false;
+    if (n is ScrollUpdateNotification) {
+      final delta = n.scrollDelta ?? 0;
+      // A reversed card (opened at its end) counts its offset upwards.
+      final down = n.metrics.axisDirection == AxisDirection.up ? -delta : delta;
+      // Setting the value also stops a running snap: the finger wins.
+      _pillHide.value += down / _pillTravel;
+    } else if (n is ScrollEndNotification &&
+        _pillHide.value > 0 &&
+        _pillHide.value < 1) {
+      _pillHide.animateTo(
+        _pillHide.value > 0.5 ? 1 : 0,
+        duration: const Duration(milliseconds: 150),
+      );
+    }
+    return false;
+  }
 
   void _expandSheet() => _sheet.animateTo(
     _expanded,
@@ -614,7 +639,10 @@ class _StudyPageState extends State<StudyPage>
                   touchSlop: (mq.gestureSettings.touchSlop ?? kTouchSlop) / 2,
                 ),
               ),
-        child: pager,
+        child: NotificationListener<ScrollNotification>(
+          onNotification: _followScroll,
+          child: pager,
+        ),
       ),
     );
   });
@@ -636,8 +664,16 @@ class _StudyPageState extends State<StudyPage>
       if (!_hasSlider) return const SizedBox.shrink();
       final scheme = Theme.of(context).colorScheme;
       final number = Theme.of(context).textTheme.titleMedium;
-      return IgnorePointer(
-        ignoring: _sheetOpen,
+      // Slides down behind the sheet, drawn above it in the Stack.
+      return AnimatedBuilder(
+        animation: _pillHide,
+        builder: (context, child) => Transform.translate(
+          offset: Offset(0, _pillHide.value * _pillTravel),
+          child: IgnorePointer(
+            ignoring: _sheetOpen || _pillHide.value > 0,
+            child: child,
+          ),
+        ),
         child: AnimatedSlide(
           offset: Offset(0, _sheetOpen ? 0.5 : 0),
           duration: const Duration(milliseconds: 200),
@@ -693,6 +729,8 @@ class _StudyPageState extends State<StudyPage>
 }
 
 const _pillHeight = 56.0;
+// From its spot to fully behind the sheet.
+const _pillTravel = _pillHeight + 8;
 
 /// Finds a question by its text or options; returns its page.
 class _QuestionSearch extends SearchDelegate<int?> {
