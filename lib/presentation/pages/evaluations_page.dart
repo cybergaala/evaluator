@@ -6,6 +6,7 @@ import '../../domain/entities/history_entry.dart';
 import '../../domain/entities/evaluation.dart';
 import '../../domain/usecases/get_evaluations.dart';
 import '../../domain/usecases/get_attempts.dart';
+import '../controllers/bookmarks_controller.dart';
 import '../controllers/progress_controller.dart';
 import '../widgets/refresh_indicators.dart';
 import 'exam_page.dart';
@@ -51,10 +52,17 @@ class _EvaluationsPageState extends State<EvaluationsPage>
     await _load(); // pick up new scores
   }
 
+  /// Ids of [e]'s questions marked as learned (ignores removed questions).
+  Set<int> _learned(Evaluation e) => LearnedController.i.of(e.id).intersection({
+    for (final q in e.questions) q.id,
+  });
+
   /// Opens [mode] for [e], asking first whether to resume or start over
-  /// when there is an unfinished session.
+  /// when there is an unfinished session, and for a new evaluation, whether
+  /// to ask only the learned questions.
   Future<void> _start(String mode, Evaluation e) async {
     final saved = ProgressController.i.load(mode, e);
+    var resumed = false;
     if (saved != null) {
       final resume = await showModalBottomSheet<bool>(
         context: context,
@@ -83,10 +91,39 @@ class _EvaluationsPageState extends State<EvaluationsPage>
       );
       if (resume == null) return;
       if (!resume) ProgressController.i.clear(mode, e.id);
+      resumed = resume;
     }
-    await _open(
-      mode == 'study' ? StudyPage(evaluation: e) : ExamPage(evaluation: e),
-    );
+    if (mode == 'study') return _open(StudyPage(evaluation: e));
+    final learned = _learned(e);
+    var onlyLearned = false;
+    if (!resumed && learned.isNotEmpty && mounted) {
+      final choice = await showModalBottomSheet<bool>(
+        context: context,
+        showDragHandle: true,
+        builder: (context) => SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.assignment),
+                title: const Text('Todas las preguntas'),
+                subtitle: Text('${e.questions.length} preguntas'),
+                onTap: () => Navigator.pop(context, false),
+              ),
+              ListTile(
+                leading: const Icon(Icons.school),
+                title: const Text('Solo aprendidas'),
+                subtitle: Text('${learned.length} preguntas'),
+                onTap: () => Navigator.pop(context, true),
+              ),
+            ],
+          ),
+        ),
+      );
+      if (choice == null) return;
+      onlyLearned = choice;
+    }
+    await _open(ExamPage(evaluation: e, only: onlyLearned ? learned : null));
   }
 
   @override
@@ -96,13 +133,12 @@ class _EvaluationsPageState extends State<EvaluationsPage>
       body: EasyRefresh(
         header: classicHeader(context),
         refreshOnStart: true,
-        // Clamping: the start refresh overlays the list instead of pushing it
-        // down (same as the example's refresh_on_start_page.dart).
-        refreshOnStartHeader: classicHeader(context, clamping: true),
+        refreshOnStartHeader: classicHeader(context),
         onRefresh: _load,
         child: CustomScrollView(
           slivers: [
             const SliverAppBar.large(title: Text('Inicio')),
+            const HeaderLocator.sliver(clearExtent: false),
             if (_loaded && _evaluations.isEmpty)
               const SliverFillRemaining(
                 hasScrollBody: false,
@@ -118,6 +154,7 @@ class _EvaluationsPageState extends State<EvaluationsPage>
                 final last = history.isEmpty ? null : history.first;
                 final study = ProgressController.i.load('study', e);
                 final exam = ProgressController.i.load('exam', e);
+                final learned = _learned(e).length;
                 return Card(
                   margin: const EdgeInsets.symmetric(
                     horizontal: 16,
@@ -132,6 +169,7 @@ class _EvaluationsPageState extends State<EvaluationsPage>
                         subtitle: Text(
                           [
                             '${e.questions.length} preguntas',
+                            if (learned > 0) 'aprendidas: $learned',
                             if (last != null) 'último: ${last.percent}%',
                             if (study != null)
                               'estudio: ${study.index + 1}/${study.questions.length}',

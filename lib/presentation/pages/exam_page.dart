@@ -14,7 +14,10 @@ import '../widgets/reading_settings_panel.dart';
 class ExamPage extends StatefulWidget {
   final Evaluation evaluation;
 
-  const ExamPage({super.key, required this.evaluation});
+  /// Ids of the questions to ask ("Solo aprendidas"); all when null.
+  final Set<int>? only;
+
+  const ExamPage({super.key, required this.evaluation, this.only});
 
   @override
   State<ExamPage> createState() => _ExamPageState();
@@ -36,8 +39,10 @@ class _ExamPageState extends State<ExamPage> {
   bool get _answered => _selected.length == _current.answers.length;
   bool get _revealed => _answered && !_settings.revealAtEnd.value;
 
-  List<Question> _prepare() =>
-      _settings.prepare(widget.evaluation.questions, alwaysShuffle: true);
+  List<Question> _prepare() => _settings.prepare([
+    for (final q in widget.evaluation.questions)
+      if (widget.only?.contains(q.id) ?? true) q,
+  ], alwaysShuffle: true);
 
   Attempt _attempt() => Attempt(
     widget.evaluation.id,
