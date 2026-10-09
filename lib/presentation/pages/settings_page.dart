@@ -17,31 +17,27 @@ class SettingsPage extends StatelessWidget {
       // Large title like the Evaluaciones tab.
       body: CustomScrollView(
         slivers: [
-          const SliverAppBar.large(title: Text('Ajustes')),
+          const SliverAppBar.large(title: Text('Settings')),
           SliverList.list(
             children: [
               ListTile(
                 leading: const Icon(Icons.palette),
-                title: const Text('Tema'),
-                subtitle: const Text('Modo claro/oscuro y color'),
+                title: const Text('Theme'),
+                subtitle: const Text('Light/dark mode and color'),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => Get.to(() => const ThemePage()),
               ),
               ListTile(
                 leading: const Icon(Icons.assignment),
-                title: const Text('Evaluación'),
-                subtitle: const Text(
-                  'Texto, desplazamiento, mezcla y revelado',
-                ),
+                title: const Text('Reading'),
+                subtitle: const Text('Text, paging, shuffle and reveal'),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => Get.to(() => const _EvaluationSettingsPage()),
               ),
               ListTile(
                 leading: const Icon(Icons.storage),
-                title: const Text('Memoria'),
-                subtitle: const Text(
-                  'Resaltados, guardadas, aprendidas e historial',
-                ),
+                title: const Text('Storage'),
+                subtitle: const Text('Highlights, saved, learned and history'),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => Get.to(() => const _MemorySettingsPage()),
               ),
@@ -59,7 +55,7 @@ class _EvaluationSettingsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Evaluación')),
+      appBar: AppBar(title: const Text('Reading')),
       body: const SingleChildScrollView(child: ReadingSettingsPanel()),
     );
   }
@@ -77,62 +73,57 @@ class _MemorySettingsPage extends StatelessWidget {
     final ok = await showConfirmDialog(
       context,
       icon: Icons.delete_outline_rounded,
-      title: '¿Borrar $what?',
-      message: 'Se borran en todas las evaluaciones. No se puede deshacer.',
-      confirm: 'Borrar',
+      title: 'Clear $what?',
+      message: "It applies to every question bank. This can't be undone.",
+      confirm: 'Clear',
     );
     if (!ok) return;
     await clear();
     if (context.mounted) {
       ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Se borraron $what')));
+          .showSnackBar(SnackBar(content: Text('Cleared $what')));
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Memoria')),
+      appBar: AppBar(title: const Text('Storage')),
       body: ListView(
         children: [
           ListTile(
             leading: const Icon(Icons.format_color_reset),
-            title: const Text('Borrar resaltados'),
-            subtitle: const Text(
-              'Quita los textos resaltados del modo estudio',
-            ),
-            onTap: () => _clear(
-              context,
-              'los resaltados',
-              HighlightsController.i.clearAll,
-            ),
+            title: const Text('Clear highlights'),
+            subtitle: const Text('Removes the highlighted text in study mode'),
+            onTap: () =>
+                _clear(context, 'highlights', HighlightsController.i.clearAll),
           ),
           ListTile(
             leading: const Icon(Icons.bookmark_remove),
-            title: const Text('Borrar preguntas guardadas'),
-            subtitle: const Text('Quita todos los marcadores'),
+            title: const Text('Clear saved questions'),
+            subtitle: const Text('Removes every bookmark'),
             onTap: () => _clear(
               context,
-              'las preguntas guardadas',
+              'saved questions',
               BookmarksController.i.clearAll,
             ),
           ),
           ListTile(
             leading: const Icon(Icons.school_outlined),
-            title: const Text('Borrar preguntas aprendidas'),
-            subtitle: const Text('Vuelven a mostrarse en el modo estudio'),
+            title: const Text('Clear learned questions'),
+            subtitle: const Text('They show up again in study mode'),
             onTap: () => _clear(
               context,
-              'las preguntas aprendidas',
+              'learned questions',
               LearnedController.i.clearAll,
             ),
           ),
           ListTile(
             leading: const Icon(Icons.history_toggle_off),
-            title: const Text('Borrar historial'),
-            subtitle: const Text('Quita sesiones de estudio y resultados'),
+            title: const Text('Clear history'),
+            subtitle: const Text('Removes study sessions and scores'),
             onTap: () =>
-                _clear(context, 'el historial', Get.find<ClearHistory>().call),
+                _clear(context, 'history', Get.find<ClearHistory>().call),
           ),
         ],
       ),

@@ -28,7 +28,7 @@ class ConfirmExit extends StatelessWidget {
           icon: Icons.logout_rounded,
           title: title,
           message: message,
-          confirm: 'Salir',
+          confirm: 'Leave',
         );
         if (leave && context.mounted) Navigator.pop(context);
       },

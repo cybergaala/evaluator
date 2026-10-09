@@ -3,7 +3,7 @@ import 'package:get/get.dart';
 
 import '../controllers/reading_settings_controller.dart';
 
-/// Reading settings controls; shown in Ajustes → Evaluación and as a bottom sheet
+/// Reading settings controls; shown in Settings → Reading and as a bottom sheet
 /// in study and evaluation modes.
 class ReadingSettingsPanel extends StatelessWidget {
   /// Hidden in study mode, where answers are always shown.
@@ -47,7 +47,7 @@ class ReadingSettingsPanel extends StatelessWidget {
         children: [
           ListTile(
             leading: const Icon(Icons.format_size),
-            title: const Text('Tamaño de texto'),
+            title: const Text('Text size'),
             trailing: Text('${(s.textScale.value * 100).round()}%'),
           ),
           Slider(
@@ -59,17 +59,17 @@ class ReadingSettingsPanel extends StatelessWidget {
           ),
           ListTile(
             leading: const Icon(Icons.format_align_left),
-            title: const Text('Alineación de texto'),
+            title: const Text('Text alignment'),
             trailing: _choice(
               value: s.justify,
-              no: (Icons.format_align_left, 'Izquierda'),
-              yes: (Icons.format_align_justify, 'Justificado'),
+              no: (Icons.format_align_left, 'Left'),
+              yes: (Icons.format_align_justify, 'Justified'),
             ),
           ),
           if (!textSizeOnly) ...[
             ListTile(
               leading: const Icon(Icons.swipe),
-              title: const Text('Desplazamiento'),
+              title: const Text('Paging'),
               trailing: _choice(
                 value: s.vertical,
                 no: (Icons.swap_horiz, 'Horizontal'),
@@ -78,46 +78,44 @@ class ReadingSettingsPanel extends StatelessWidget {
             ),
             SwitchListTile(
               secondary: const Icon(Icons.shuffle),
-              title: const Text('Mezclar preguntas'),
+              title: const Text('Shuffle questions'),
               subtitle: const Text(
-                'En modo estudio, al iniciar. La evaluación siempre mezcla',
+                'In study mode, on start. Exams always shuffle',
               ),
               value: s.shuffleQuestions.value,
               onChanged: (v) => s.shuffleQuestions.value = v,
             ),
             SwitchListTile(
               secondary: const Icon(Icons.low_priority),
-              title: const Text('Mezclar opciones'),
+              title: const Text('Shuffle options'),
               subtitle: const Text(
-                'En modo estudio, al iniciar. La evaluación siempre mezcla',
+                'In study mode, on start. Exams always shuffle',
               ),
               value: s.shuffleOptions.value,
               onChanged: (v) => s.shuffleOptions.value = v,
             ),
             SwitchListTile(
               secondary: const Icon(Icons.quiz_outlined),
-              title: const Text('Ocultar respuestas'),
+              title: const Text('Hide answers'),
               subtitle: const Text(
-                'En modo estudio, hasta tocar una opción o Mostrar respuesta',
+                'In study mode, until you tap an option or Show answer',
               ),
               value: s.hideAnswers.value,
               onChanged: (v) => s.hideAnswers.value = v,
             ),
             SwitchListTile(
               secondary: const Icon(Icons.linear_scale),
-              title: const Text('Barra de preguntas'),
-              subtitle: const Text(
-                'En modo estudio, para saltar entre preguntas',
-              ),
+              title: const Text('Question slider'),
+              subtitle: const Text('In study mode, to jump between questions'),
               value: s.showSlider.value,
               onChanged: (v) => s.showSlider.value = v,
             ),
             if (showRevealAtEnd)
               SwitchListTile(
                 secondary: const Icon(Icons.visibility_off),
-                title: const Text('Revelar al final'),
+                title: const Text('Reveal at the end'),
                 subtitle: const Text(
-                  'En evaluación, los aciertos se ven solo en el resultado',
+                  'In exams, answers show only in the result',
                 ),
                 value: s.revealAtEnd.value,
                 onChanged: (v) => s.revealAtEnd.value = v,

@@ -42,13 +42,13 @@ class _HomePageState extends State<HomePage> {
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.rocket_launch),
-            label: 'Inicio',
+            label: 'Home',
           ),
+          BottomNavigationBarItem(icon: Icon(Icons.history), label: 'History'),
           BottomNavigationBarItem(
-            icon: Icon(Icons.history),
-            label: 'Historial',
+            icon: Icon(Icons.settings),
+            label: 'Settings',
           ),
-          BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Ajustes'),
         ],
       ),
     );

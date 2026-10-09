@@ -13,7 +13,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'fake_history.dart';
 
 void main() {
-  testWidgets('revelar al final hides answers until the result', (
+  testWidgets('Reveal at the end hides answers until the result', (
     tester,
   ) async {
     SharedPreferences.setMockInitialValues({'reading_reveal_at_end': true});
@@ -45,7 +45,7 @@ void main() {
     expect(tile('b').tileColor, isNull);
     expect(find.text('1/1'), findsOneWidget); // no running score
 
-    await tester.tap(find.text('Ver resultado'));
+    await tester.tap(find.text('See result'));
     await tester.pumpAndSettle();
     expect(find.text('100%'), findsOneWidget);
   });
@@ -78,13 +78,13 @@ void main() {
 
     await tester.pageBack();
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Cancelar'));
+    await tester.tap(find.text('Cancel'));
     await tester.pumpAndSettle();
     expect(find.text('Q1'), findsOneWidget);
 
     await tester.pageBack();
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Salir'));
+    await tester.tap(find.text('Leave'));
     await tester.pumpAndSettle();
     expect(find.text('open'), findsOneWidget);
   });
@@ -120,9 +120,9 @@ void main() {
         GetMaterialApp(home: ExamPage(evaluation: evaluation)),
       );
 
-      await tester.tap(find.byTooltip('Tamaño de texto'));
+      await tester.tap(find.byTooltip('Text size'));
       await tester.pumpAndSettle();
-      expect(find.text('Tamaño de texto'), findsOneWidget);
+      expect(find.text('Text size'), findsOneWidget);
       expect(find.byType(SwitchListTile), findsNothing);
       await tester.tapAt(const Offset(10, 10)); // close the sheet
       await tester.pumpAndSettle();
@@ -130,16 +130,16 @@ void main() {
       // Answer the first question right, then finish.
       await tester.tap(find.text('a'));
       await tester.pump();
-      await tester.tap(find.byTooltip('Finalizar evaluación'));
+      await tester.tap(find.byTooltip('Finish exam'));
       await tester.pumpAndSettle();
       expect(
-        find.text('Quedan 19 sin responder; cuentan como incorrectas.'),
+        find.text('19 left unanswered; they count as wrong.'),
         findsOneWidget,
       );
-      await tester.tap(find.text('Finalizar'));
+      await tester.tap(find.text('Finish'));
       await tester.pumpAndSettle();
 
-      expect(find.text('1 de 20 correctas'), findsOneWidget);
+      expect(find.text('1 of 20 correct'), findsOneWidget);
       final saved = history.entries.single as Attempt;
       expect((saved.correct, saved.total), (1, 20));
     },
@@ -173,17 +173,17 @@ void main() {
     final firstText = (first.widget as Text).data!;
     await tester.tap(find.text('a').first);
     await tester.pump();
-    await tester.tap(find.text('Siguiente'));
+    await tester.tap(find.text('Next'));
     await tester.pumpAndSettle();
 
-    await open(); // a fresh page, like reopening it from Inicio
+    await open(); // a fresh page, like reopening it from Home
     await tester.pumpAndSettle();
     expect(find.textContaining('2/2'), findsOneWidget);
     expect(find.text(firstText), findsNothing);
 
     await tester.tap(find.byIcon(Icons.flag));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Finalizar'));
+    await tester.tap(find.text('Finish'));
     await tester.pumpAndSettle();
     expect(ProgressController.i.load('exam', evaluation), isNull);
   });
@@ -207,7 +207,7 @@ void main() {
         home: ExamPage(evaluation: evaluation, only: const {2}),
       ),
     );
-    expect(find.text('1/1 · 0 correctas'), findsOneWidget);
+    expect(find.text('1/1 · 0 correct'), findsOneWidget);
     expect(find.text('Q2'), findsOneWidget);
   });
 }
