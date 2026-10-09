@@ -24,7 +24,11 @@ Android release (signed) to Firebase App Distribution (project `gaala-evaluator`
 scripts/distribute.sh "release notes" [testers-group]  # flutter build apk --release + upload
 ```
 
-Signing reads `android/key.properties` (`keyAlias=evaluator`, `storeFile=evaluator-keystore.jks` in `android/app/`); both are git-ignored, so without them the release build falls back to debug keys. Bump `version:` in `pubspec.yaml` before each upload.
+Signing reads `android/key.properties` (`keyAlias=evaluator`, `storeFile=evaluator-keystore.jks` in `android/app/`); both are git-ignored, so without them the release build falls back to debug keys. Bump `version:` in `pubspec.yaml` before each upload:
+
+- Each release bumps only the **patch** (third digit) and the build number: `1.8.0+9` → `1.8.1+10`. Releases are small and frequent, so minor/major jumps would run out fast.
+- Bump the minor (`1.9.0`) or major (`2.0.0`) only when the user asks for it.
+- The build number (after `+`) always goes up by 1, it is Android's `versionCode`.
 
 Requires Flutter ≥ 3.47 (easy_refresh 4.x needs it).
 
