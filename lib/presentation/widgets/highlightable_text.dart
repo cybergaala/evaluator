@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../controllers/highlights_controller.dart';
 
@@ -11,14 +12,31 @@ const neonColors = [
   Color(0xFFFF9F00),
 ];
 
-/// Text with neon highlights. When [selectable], its selection toolbar paints
-/// like a marker. Off by default because selectable text wins horizontal drags
-/// on Android, which would block horizontal paging.
+/// Opens [text] in the system translator (Google Translate's PROCESS_TEXT
+/// action), or says to install it.
+Future<void> translate(BuildContext context, String text) async {
+  final service = DefaultProcessTextService();
+  // ponytail: matched by label, Android has no id for "translate".
+  final action = (await service.queryTextActions())
+      .where(
+        (a) => RegExp('tradu|transl', caseSensitive: false).hasMatch(a.label),
+      )
+      .firstOrNull;
+  if (action != null) {
+    await service.processTextAction(action.id, text, true);
+  } else if (context.mounted) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Instala Google Traductor para traducir')),
+    );
+  }
+}
+
+/// Text with neon highlights, always selectable: a long press selects (drags
+/// still scroll and page) and the toolbar paints like a marker.
 class HighlightableText extends StatelessWidget {
   final String text;
   final TextStyle? style;
   final List<Highlight> highlights;
-  final bool selectable;
 
   /// Paints `[start, end)` with `neonColors[color]`, or erases it when null.
   final void Function(int start, int end, int? color) onPaint;
@@ -29,7 +47,6 @@ class HighlightableText extends StatelessWidget {
     required this.highlights,
     required this.onPaint,
     this.style,
-    this.selectable = false,
   });
 
   List<TextSpan> _spans() {
@@ -58,38 +75,66 @@ class HighlightableText extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final span = TextSpan(children: _spans());
-    if (!selectable) return Text.rich(span, style: style);
-    // Own bucket: SelectableText's inner Scrollable shares the card ListView's
-    // PageStorage id, so it would restore that offset and animate back to 0.
-    return PageStorage(
-      bucket: PageStorageBucket(),
-      child: _selectable(context, span),
-    );
+    return _SelectableHighlight(span: span, style: style, onPaint: onPaint);
+  }
+}
+
+/// [SelectionArea] plus a listener for the selected offsets.
+class _SelectableHighlight extends StatefulWidget {
+  final TextSpan span;
+  final TextStyle? style;
+  final void Function(int start, int end, int? color) onPaint;
+
+  const _SelectableHighlight({
+    required this.span,
+    required this.style,
+    required this.onPaint,
+  });
+
+  @override
+  State<_SelectableHighlight> createState() => _SelectableHighlightState();
+}
+
+class _SelectableHighlightState extends State<_SelectableHighlight> {
+  // Tells the selected range as offsets into this text.
+  final _selection = SelectionListenerNotifier();
+
+  @override
+  void dispose() {
+    _selection.dispose();
+    super.dispose();
   }
 
-  Widget _selectable(BuildContext context, TextSpan span) {
-    return SelectableText.rich(
-      span,
-      style: style,
-      // SelectableText ignores DefaultTextStyle's alignment, Text.rich doesn't.
-      textAlign: DefaultTextStyle.of(context).textAlign,
+  @override
+  Widget build(BuildContext context) {
+    return SelectionArea(
       contextMenuBuilder: (context, state) {
-        final sel = state.textEditingValue.selection;
-        void paint(int? color) {
-          onPaint(sel.start, sel.end, color);
+        // The selection as [start, end); backwards ones come reversed.
+        (int, int)? selected() {
+          final range = _selection.selection.range;
+          if (range == null) return null;
+          final (a, b) = (range.startOffset, range.endOffset);
+          return a < b ? (a, b) : (b, a);
+        }
+
+        void done() {
+          state.clearSelection();
           state.hideToolbar();
-          state.userUpdateTextEditingValue(
-            state.textEditingValue.copyWith(
-              selection: TextSelection.collapsed(offset: sel.end),
-            ),
-            SelectionChangedCause.toolbar,
-          );
+        }
+
+        void paint(int? color) {
+          if (selected() case (final start, final end)) {
+            widget.onPaint(start, end, color);
+          }
+          done();
         }
 
         return AdaptiveTextSelectionToolbar(
           anchors: state.contextMenuAnchors,
           children: [
-            for (var i = 0; i < neonColors.length; i++)
+            // Yellow, green and cyan only. Pink and orange stay in
+            // neonColors so highlights saved with them still draw.
+            for (final i in const [0, 1, 3])
               IconButton(
                 tooltip: 'Resaltar',
                 onPressed: () => paint(i),
@@ -100,15 +145,35 @@ class HighlightableText extends StatelessWidget {
               onPressed: () => paint(null),
               icon: const Icon(Icons.format_color_reset),
             ),
+            // The region's own Copy, which also hides the toolbar.
+            for (final item in state.contextMenuButtonItems)
+              if (item.type == ContextMenuButtonType.copy)
+                IconButton(
+                  tooltip: 'Copiar',
+                  onPressed: item.onPressed,
+                  icon: const Icon(Icons.copy),
+                ),
             IconButton(
-              tooltip: 'Copiar',
-              onPressed: () =>
-                  state.copySelection(SelectionChangedCause.toolbar),
-              icon: const Icon(Icons.copy),
+              tooltip: 'Traducir',
+              onPressed: () {
+                final text = switch (selected()) {
+                  (final start, final end) =>
+                    widget.span.toPlainText().substring(start, end),
+                  null => null,
+                };
+                done();
+                // The page's context: the toolbar's is gone once hidden.
+                if (text != null) translate(this.context, text);
+              },
+              icon: const Icon(Icons.translate),
             ),
           ],
         );
       },
+      child: SelectionListener(
+        selectionNotifier: _selection,
+        child: Text.rich(widget.span, style: widget.style),
+      ),
     );
   }
 }
