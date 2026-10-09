@@ -81,8 +81,10 @@ class QuestionCard extends StatelessWidget {
           // Clamping on every platform, so reaching an edge emits
           // OverscrollNotification (study page hands it to the pager).
           physics: physics,
-          // Left clears the option letters, which stick out of the tiles.
-          padding: EdgeInsets.fromLTRB(24, 20, 24, 20 + bottomSpace),
+          // 16 margin on both sides (like the slider and the AppBar). Left adds
+          // the 14 the option letters stick out of the tiles, so their edge
+          // sits on the margin.
+          padding: EdgeInsets.fromLTRB(30, 20, 16, 20 + bottomSpace),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
