@@ -7,6 +7,7 @@ import '../../domain/entities/question.dart';
 import '../../domain/usecases/save_history_entry.dart';
 import '../controllers/progress_controller.dart';
 import '../controllers/reading_settings_controller.dart';
+import '../widgets/confirm_dialog.dart';
 import '../widgets/confirm_exit.dart';
 import '../widgets/question_card.dart';
 import '../widgets/reading_settings_panel.dart';
@@ -98,28 +99,16 @@ class _ExamPageState extends State<ExamPage> {
 
   Future<void> _confirmFinish() async {
     final left = _questions.length - _index - (_answered ? 1 : 0);
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('¿Finalizar evaluación?'),
-        content: Text(
-          left == 0
-              ? 'Se guardará tu resultado.'
-              : 'Quedan $left sin responder; cuentan como incorrectas.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancelar'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Finalizar'),
-          ),
-        ],
-      ),
+    final ok = await showConfirmDialog(
+      context,
+      icon: Icons.flag_rounded,
+      title: '¿Finalizar evaluación?',
+      message: left == 0
+          ? 'Se guardará tu resultado.'
+          : 'Quedan $left sin responder; cuentan como incorrectas.',
+      confirm: 'Finalizar',
     );
-    if (ok == true) await _finish();
+    if (ok) await _finish();
   }
 
   void _restart() {
