@@ -7,12 +7,21 @@ import '../../domain/entities/evaluation.dart';
 import '../../domain/entities/question.dart';
 
 /// A session to resume: the questions in session order (options as shown),
-/// the current one and, in evaluation mode, the running score.
-typedef Progress = ({List<Question> questions, int index, int correct});
+/// the current one and, in evaluation mode, the running score, whether a
+/// retry reshuffles, and the time limit with its deadline (timed mode).
+typedef Progress = ({
+  List<Question> questions,
+  int index,
+  int correct,
+  bool shuffle,
+  Duration? limit,
+  DateTime? deadline,
+});
 
 /// Unfinished study/evaluation sessions in [SharedPreferences] under
 /// `progress_<mode>_<evaluationId>` as
-/// `{"order": [[questionId, [originalOptionIndex, ...]], ...], "index": i, "correct": c}`.
+/// `{"order": [[questionId, [originalOptionIndex, ...]], ...], "index": i,
+/// "correct": c, "shuffle": b, "limit": seconds?, "deadline": epochMs?}`.
 class ProgressController extends GetxController {
   static ProgressController get i => Get.find();
 
@@ -40,6 +49,15 @@ class ProgressController extends GetxController {
       questions: questions,
       index: index,
       correct: json['correct'] as int,
+      shuffle: json['shuffle'] as bool? ?? true,
+      limit: switch (json['limit']) {
+        final int s => Duration(seconds: s),
+        _ => null,
+      },
+      deadline: switch (json['deadline']) {
+        final int ms => DateTime.fromMillisecondsSinceEpoch(ms),
+        _ => null,
+      },
     );
   }
 
@@ -49,6 +67,9 @@ class ProgressController extends GetxController {
     List<Question> questions,
     int index, [
     int correct = 0,
+    bool shuffle = true,
+    Duration? limit,
+    DateTime? deadline,
   ]) {
     final byId = {for (final q in evaluation.questions) q.id: q};
     _prefs.setString(
@@ -65,6 +86,9 @@ class ProgressController extends GetxController {
         ],
         'index': index,
         'correct': correct,
+        'shuffle': shuffle,
+        'limit': ?limit?.inSeconds,
+        'deadline': ?deadline?.millisecondsSinceEpoch,
       }),
     );
   }
