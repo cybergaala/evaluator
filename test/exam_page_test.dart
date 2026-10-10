@@ -5,6 +5,7 @@ import 'package:evaluator/domain/usecases/save_history_entry.dart';
 import 'package:evaluator/presentation/controllers/progress_controller.dart';
 import 'package:evaluator/presentation/controllers/reading_settings_controller.dart';
 import 'package:evaluator/presentation/pages/exam_page.dart';
+import 'package:evaluator/presentation/widgets/exam_setup_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart' hide Evaluation;
 import 'package:get/get.dart';
@@ -109,11 +110,9 @@ void main() {
         ],
       );
 
-      // Always shuffled, even with the shuffle settings off.
+      // Shuffled by default, even with the study shuffle settings off.
       expect(settings.shuffleQuestions.value, isFalse);
-      final order = settings
-          .prepare(evaluation.questions, alwaysShuffle: true)
-          .map((q) => q.id);
+      final order = const ExamSetup().pick(evaluation).map((q) => q.id);
       expect(order, isNot([for (var i = 1; i <= 20; i++) i]));
 
       await tester.pumpWidget(
@@ -204,10 +203,111 @@ void main() {
     );
     await tester.pumpWidget(
       GetMaterialApp(
-        home: ExamPage(evaluation: evaluation, only: const {2}),
+        home: ExamPage(
+          evaluation: evaluation,
+          setup: const ExamSetup(only: {2}),
+        ),
       ),
     );
     expect(find.text('1/1 · 0 correct'), findsOneWidget);
     expect(find.text('Q2'), findsOneWidget);
+  });
+
+  testWidgets('a timed exam reveals nothing and ends when time is up', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    Get.put(ReadingSettingsController(await SharedPreferences.getInstance()));
+    final history = FakeHistory();
+    Get.put(SaveHistoryEntry(history));
+    Get.put(ProgressController(await SharedPreferences.getInstance()));
+    addTearDown(Get.reset);
+    final evaluation = Evaluation(
+      id: 'e',
+      title: 'E',
+      questions: [
+        for (var i = 1; i <= 2; i++)
+          Question(id: i, question: 'Q$i', options: ['a', 'b'], answers: [0]),
+      ],
+    );
+    await tester.pumpWidget(
+      GetMaterialApp(
+        home: ExamPage(
+          evaluation: evaluation,
+          setup: const ExamSetup(perQuestion: Duration(seconds: 30)),
+        ),
+      ),
+    );
+    expect(find.text('01:00'), findsOneWidget);
+    expect(find.text('1/2'), findsOneWidget); // no running score
+
+    await tester.tap(find.text('a').first);
+    await tester.pump();
+    expect(find.text('Next'), findsOneWidget);
+
+    // Reopened after the deadline: it ends right away.
+    ProgressController.i.save(
+      'exam',
+      evaluation,
+      evaluation.questions,
+      1,
+      0,
+      true,
+      const Duration(minutes: 1),
+      DateTime.now().subtract(const Duration(seconds: 1)),
+    );
+    await tester.pumpWidget(
+      GetMaterialApp(
+        home: ExamPage(key: UniqueKey(), evaluation: evaluation),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text("Time's up"), findsOneWidget);
+    expect((history.entries.single as Attempt).total, 2);
+  });
+
+  testWidgets('the setup sheet builds a quick exam of learned questions', (
+    tester,
+  ) async {
+    final evaluation = Evaluation(
+      id: 'e',
+      title: 'E',
+      questions: [
+        for (var i = 1; i <= 40; i++)
+          Question(id: i, question: 'Q$i', options: ['a', 'b'], answers: [0]),
+      ],
+    );
+    ExamSetup? setup;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) => TextButton(
+            onPressed: () async => setup = await showExamSetup(
+              context,
+              evaluation,
+              {for (var i = 1; i <= 15; i++) i},
+            ),
+            child: const Text('open'),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+    expect(find.text('Start · 40 questions'), findsOneWidget);
+
+    await tester.tap(find.text('Quick'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Learned · 15'));
+    await tester.pumpAndSettle();
+    expect(find.text('Start · 15 questions'), findsOneWidget); // 20 > 15
+    await tester.tap(find.text('10'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Start · 10 questions'));
+    await tester.pumpAndSettle();
+
+    expect(setup!.count, 10);
+    expect(setup!.only, hasLength(15));
+    expect(setup!.pick(evaluation).every((q) => q.id <= 15), isTrue);
   });
 }

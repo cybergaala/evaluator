@@ -8,6 +8,7 @@ import '../../domain/usecases/get_evaluations.dart';
 import '../../domain/usecases/get_attempts.dart';
 import '../controllers/bookmarks_controller.dart';
 import '../controllers/progress_controller.dart';
+import '../widgets/exam_setup_sheet.dart';
 import '../widgets/refresh_indicators.dart';
 import 'exam_page.dart';
 import 'study_page.dart';
@@ -58,8 +59,7 @@ class _EvaluationsPageState extends State<EvaluationsPage>
   });
 
   /// Opens [mode] for [e], asking first whether to resume or start over
-  /// when there is an unfinished session, and for a new evaluation, whether
-  /// to ask only the learned questions.
+  /// when there is an unfinished session, and for a new exam, how to run it.
   Future<void> _start(String mode, Evaluation e) async {
     final saved = ProgressController.i.load(mode, e);
     var resumed = false;
@@ -94,36 +94,10 @@ class _EvaluationsPageState extends State<EvaluationsPage>
       resumed = resume;
     }
     if (mode == 'study') return _open(StudyPage(evaluation: e));
-    final learned = _learned(e);
-    var onlyLearned = false;
-    if (!resumed && learned.isNotEmpty && mounted) {
-      final choice = await showModalBottomSheet<bool>(
-        context: context,
-        showDragHandle: true,
-        builder: (context) => SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                leading: const Icon(Icons.assignment),
-                title: const Text('All questions'),
-                subtitle: Text('${e.questions.length} questions'),
-                onTap: () => Navigator.pop(context, false),
-              ),
-              ListTile(
-                leading: const Icon(Icons.school),
-                title: const Text('Learned only'),
-                subtitle: Text('${learned.length} questions'),
-                onTap: () => Navigator.pop(context, true),
-              ),
-            ],
-          ),
-        ),
-      );
-      if (choice == null) return;
-      onlyLearned = choice;
-    }
-    await _open(ExamPage(evaluation: e, only: onlyLearned ? learned : null));
+    if (resumed) return _open(ExamPage(evaluation: e));
+    if (!mounted) return;
+    final setup = await showExamSetup(context, e, _learned(e));
+    if (setup != null) await _open(ExamPage(evaluation: e, setup: setup));
   }
 
   @override
